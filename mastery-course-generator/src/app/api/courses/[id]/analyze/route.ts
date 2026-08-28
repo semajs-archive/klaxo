@@ -1,22 +1,27 @@
 /**
- * API: Source document analysis.
+ * API: Source document analysis (multi-source).
  *
- * POST /api/courses/:id/analyze       - analyze a source document into a knowledge package
- *   body: { documentId: string }
+ * POST /api/courses/:id/analyze - analyze one or more source documents into a
+ *   single knowledge package.
+ *   body: { documentIds: string[] }
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUserId } from '@/lib/auth';
-import { getCourse, getSourceDocument } from '@/db/repo';
-import { analyzeSource } from '@/services/source-analysis';
-import { notFound, toAppError } from '@/lib/errors';
+import { getCourse, listSourceDocuments } from '@/db/repo';
+import { notFound, badRequest, toAppError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
+import { startJob, runJob } from '@/pipeline/orchestrator';
 
 const AnalyzeSchema = z.object({
-  documentId: z.string().min(1),
+  documentIds: z.array(z.string().min(1)).min(1).max(50),
 });
 
 /**
  * POST /api/courses/:id/analyze
+ *
+ * Runs analysis through a persisted job (idempotent via request key) so the
+ * UI can poll progress and recover after refresh. Returns the job id.
  */
 export async function POST(
   req: NextRequest,
@@ -32,7 +37,6 @@ export async function POST(
 
     const body = await req.json();
     const parsed = AnalyzeSchema.safeParse(body);
-
     if (!parsed.success) {
       return NextResponse.json(
         { error: 'Invalid input', details: parsed.error.flatten() },
@@ -40,16 +44,33 @@ export async function POST(
       );
     }
 
-    const doc = getSourceDocument(parsed.data.documentId);
-    if (!doc) throw notFound('Source document not found');
-    if (doc.courseId !== id) throw notFound('Source document not found');
+    // Validate every document belongs to this course.
+    const courseSources = listSourceDocuments(id);
+    const courseSourceIds = new Set(courseSources.map((s) => s.id));
+    for (const docId of parsed.data.documentIds) {
+      if (!courseSourceIds.has(docId)) {
+        throw badRequest(`Source document ${docId} does not belong to this course.`);
+      }
+    }
 
-    const result = await analyzeSource({
+    // Idempotency key: same course + same source set → same job.
+    const requestKey = `analyze:${id}:${[...parsed.data.documentIds].sort().join(',')}`;
+    const { jobId, created } = startJob({
       courseId: id,
-      documentId: parsed.data.documentId,
+      userId,
+      kind: 'ANALYZE_SOURCE',
+      requestKey,
+      input: { documentIds: parsed.data.documentIds },
     });
 
-    return NextResponse.json({ result });
+    if (created) {
+      // Fire-and-forget; progress is persisted. Failures are recorded on the job.
+      runJob(jobId).catch((err) => {
+        logger.error('Analyze job failed', { jobId, error: (err as Error).message });
+      });
+    }
+
+    return NextResponse.json({ jobId, created }, { status: created ? 201 : 200 });
   } catch (err) {
     const appErr = toAppError(err);
     return NextResponse.json(

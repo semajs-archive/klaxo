@@ -114,26 +114,29 @@ export class MockProvider implements AIProvider {
   private mockContent(request: CompletionRequest): string {
     const prompt = request.messages.map((m) => m.content).join('\n').toLowerCase();
 
-    // Source extraction mock.
-    if (prompt.includes('source') && prompt.includes('extract')) {
+    // Source extraction mock (distinctive system prompt: "source analyst").
+    if (prompt.includes('source analyst')) {
       return JSON.stringify({
         title: 'Sample Course: Introduction to Concepts',
         subject: 'general',
         level: 'introductory',
         summary: 'A sample course generated in development mode.',
         units: [
-          { title: 'Unit 1: Foundations', objectives: ['Define foundational terms.'] },
-          { title: 'Unit 2: Application', objectives: ['Apply foundational concepts.'] },
+          { title: 'Unit 1: Foundations', ordinal: 0, description: 'Laying the groundwork.', classification: 'REQUIRED', objectiveIds: [] },
+          { title: 'Unit 2: Application', ordinal: 1, description: 'Applying knowledge.', classification: 'REQUIRED', objectiveIds: [] },
         ],
         objectives: [
-          { statement: 'Define foundational terms accurately.', category: 'knowledge', difficulty: 2, importance: 3 },
-          { statement: 'Apply foundational concepts to novel situations.', category: 'skill', difficulty: 3, importance: 4 },
+          { statement: 'Define foundational terms accurately.', category: 'knowledge', difficulty: 2, importance: 3, classification: 'REQUIRED', sourceFragmentIds: [] },
+          { statement: 'Apply foundational concepts to novel situations.', category: 'skill', difficulty: 3, importance: 4, classification: 'REQUIRED', sourceFragmentIds: [] },
         ],
-        terminology: ['concept', 'foundation'],
+        terminology: [
+          { term: 'concept', definition: 'An abstract idea', domain: 'general' },
+          { term: 'foundation', definition: 'A basis or groundwork', domain: 'general' },
+        ],
         requirements: [],
+        prerequisites: [],
         ambiguities: [],
         confidence: 0.9,
-        uncertainty: [],
       });
     }
 
@@ -148,24 +151,30 @@ export class MockProvider implements AIProvider {
           {
             title: 'Unit 1: Foundations',
             description: 'Laying the groundwork.',
-            topics: [{ title: 'Core Concepts' }],
-            objectives: [{ statement: 'Define foundational terms accurately.', difficulty: 2, importance: 3 }],
+            classification: 'REQUIRED',
+            topics: [{ title: 'Core Concepts', description: 'Basic definitions', classification: 'REQUIRED' }],
+            objectives: [{ statement: 'Define foundational terms accurately.', category: 'knowledge', difficulty: 2, importance: 3, classification: 'REQUIRED', prerequisites: [] }],
+            estimatedMinutes: 120,
           },
           {
             title: 'Unit 2: Application',
             description: 'Applying knowledge.',
-            topics: [{ title: 'Practical Use' }],
-            objectives: [{ statement: 'Apply foundational concepts to novel situations.', difficulty: 3, importance: 4 }],
+            classification: 'REQUIRED',
+            topics: [{ title: 'Practical Use', description: 'Real-world applications', classification: 'REQUIRED' }],
+            objectives: [{ statement: 'Apply foundational concepts to novel situations.', category: 'skill', difficulty: 3, importance: 4, classification: 'REQUIRED', prerequisites: ['Define foundational terms accurately.'] }],
+            estimatedMinutes: 120,
           },
         ],
         prerequisites: [],
         estimatedMinutes: 240,
+        classifications: { required: [], prerequisite: [], recommended: [], enrichment: [] },
       });
     }
 
-    // Lesson generation mock.
-    if (prompt.includes('lesson')) {
+    // Lesson generation mock (distinctive system prompt: "instructional designer").
+    if (prompt.includes('instructional designer')) {
       return JSON.stringify({
+        objectives: [],
         sections: [
           { type: 'motivation', title: 'Why this matters', content: 'Understanding this concept unlocks deeper learning.' },
           { type: 'explanation', title: 'Core Explanation', content: 'The main idea explained clearly.' },
@@ -177,13 +186,42 @@ export class MockProvider implements AIProvider {
         ],
         visuals: [],
         masteryCheck: { prompt: 'Can you explain the concept in your own words?', criteria: 'Accurate explanation' },
+        summary: 'Key takeaways from this lesson.',
         estimatedMinutes: 45,
       });
     }
 
-    // Assessment generation mock.
-    if (prompt.includes('assessment') || prompt.includes('question')) {
+    // Practice generation mock (distinctive system prompt: "practice-problem designer").
+    if (prompt.includes('practice-problem designer')) {
       return JSON.stringify({
+        title: 'Practice: Applying the concept',
+        level: 'independent',
+        questions: [
+          {
+            kind: 'mcq',
+            prompt: 'Which of the following best defines the concept?',
+            choices: [
+              { text: 'The accurate definition', isCorrect: true },
+              { text: 'A related but incorrect definition', isCorrect: false },
+              { text: 'An unrelated idea', isCorrect: false },
+            ],
+            explanation: 'The correct option states the accurate definition.',
+            misconceptions: ['Confusing related terms'],
+            expectedSkill: 'recall',
+            level: 'independent',
+            difficulty: 2,
+          },
+        ],
+      });
+    }
+
+    // Assessment generation mock (distinctive system prompt: "assessment designer").
+    if (prompt.includes('assessment designer')) {
+      return JSON.stringify({
+        kind: 'unit',
+        title: 'Unit Assessment',
+        instructions: 'Answer the following questions.',
+        objectiveIds: [],
         questions: [
           {
             kind: 'mcq',
@@ -196,22 +234,16 @@ export class MockProvider implements AIProvider {
             ],
             explanation: 'The correct answer aligns with the definition.',
             misconceptions: ['Confusing related terms'],
+            expectedSkill: 'recall',
             difficulty: 2,
-          },
-          {
-            kind: 'short_answer',
-            prompt: 'Explain the concept in one paragraph.',
-            answerKey: { sampleAnswer: 'A clear explanation of the concept.' },
-            explanation: 'Look for accurate use of terminology.',
-            difficulty: 3,
           },
         ],
         passThreshold: 0.8,
       });
     }
 
-    // QA mock.
-    if (prompt.includes('qa') || prompt.includes('quality')) {
+    // QA mock (distinctive system prompt: "quality-assurance reviewer").
+    if (prompt.includes('quality-assurance reviewer')) {
       return JSON.stringify({
         checks: [
           { checkKey: 'source_coverage', severity: 'info', status: 'pass', message: 'All source material covered.' },

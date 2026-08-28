@@ -1,4 +1,4 @@
-# Mastery Course Generator
+# KLAXO
 
 > **AI-powered curriculum engineering platform** — transforms raw educational material into structured, grounded, mastery-oriented courses using FCC Server NVIDIA NIM models.
 
@@ -6,7 +6,7 @@
 
 ## Product Overview
 
-The Mastery Course Generator is a curriculum engineering platform that takes messy educational inputs (syllabus photos, PDFs, lecture notes, textbook material, natural-language prompts) and produces a complete, structured course with:
+KLAXO is a curriculum engineering platform that takes messy educational inputs (syllabus photos, PDFs, lecture notes, textbook material, natural-language prompts) and produces a complete, structured course with:
 
 - **Course architecture** — units, topics, measurable learning objectives
 - **Lessons** — explanations, worked examples, visual specifications, misconceptions
@@ -14,7 +14,9 @@ The Mastery Course Generator is a curriculum engineering platform that takes mes
 - **Assessments** — aligned to objectives with distractor analysis
 - **Mastery tracking** — evidence-based progression with spaced review
 - **Provenance** — every element traced back to source material
-- **Quality assurance** — automated checks with revision loops
+- **Quality assurance** — automated checks with targeted revision loops
+- **Versioning** — immutable published versions with restore/compare
+- **Interactive workspace** — lessons, practice, assessments, mastery in one view
 
 ---
 
@@ -23,58 +25,59 @@ The Mastery Course Generator is a curriculum engineering platform that takes mes
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Frontend (Next.js)                       │
-│  Dashboard → Wizard (7 steps) → Workspace (tabs)               │
+│  Dashboard → Wizard (8 steps) → Workspace (7 tabs)             │
 └─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
+                               │
+                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        API Layer (Next.js Routes)               │
 │  /api/courses • /api/sources • /api/analyze • /api/jobs        │
+│  /api/versions • /api/mastery • /api/practice/attempt          │
 └─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
+                               │
+                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Pipeline Orchestrator                    │
 │  Job state machine: QUEUED → ANALYZING → PLANNING →            │
 │  GENERATING → VALIDATING → REVISING → COMPLETED                │
 │  Streaming progress events for UI recovery                     │
 └─────────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-       ┌──────────┐    ┌──────────────┐  ┌──────────┐
-       │ Ingestion│    │Source Analysis│  │Course Gen│
-       │ Service  │    │ Service       │  │ Service  │
-       └──────────┘    └──────────────┘  └──────────┘
-              │               │               │
-              ▼               ▼               ▼
-       ┌──────────┐    ┌──────────────┐  ┌──────────┐
-       │  Source  │    │ Knowledge    │  │ Blueprint│
-       │  Docs    │    │ Package      │  │ + Units  │
-       │  + Frags │    │ (normalized) │  │ + Object.│
-       └──────────┘    └──────────────┘  └──────────┘
-                                                      │
-                              ┌───────────────────────┘
-                              ▼
-                       ┌──────────────┐
-                       │   QA Service │
-                       │ (deterministic│
-                       │  + AI checks)│
-                       └──────────────┘
-                              │
-                              ▼
-                       ┌──────────────┐
-                       │   Database   │
-                       │  (SQLite +   │
-                       │  Drizzle ORM)│
-                       └──────────────┘
-                              │
-                              ▼
-                       ┌──────────────┐
-                       │ AI Provider  │
-                       │ (NVIDIA NIM  │
-                       │  via FCC)    │
-                       └──────────────┘
+                               │
+               ┌───────────────┼───────────────┐
+               ▼               ▼               ▼
+        ┌──────────┐    ┌──────────────┐  ┌──────────┐
+        │ Ingestion│    │Source Analysis│  │Course Gen│
+        │ Service  │    │ Service       │  │ Service  │
+        └──────────┘    └──────────────┘  └──────────┘
+               │               │               │
+               ▼               ▼               ▼
+        ┌──────────┐    ┌──────────────┐  ┌──────────┐
+        │  Source  │    │ Knowledge    │  │ Blueprint│
+        │  Docs    │    │ Package      │  │ + Units  │
+        │  + Frags │    │ (normalized) │  │ + Object.│
+        └──────────┘    └──────────────┘  └──────────┘
+                                                       │
+                               ┌───────────────────────┘
+                               ▼
+                        ┌──────────────┐
+                        │   QA Service │
+                        │ (deterministic│
+                        │  + AI checks)│
+                        └──────────────┘
+                               │
+                               ▼
+                        ┌──────────────┐
+                        │   Database   │
+                        │  (SQLite +   │
+                        │  Drizzle ORM)│
+                        └──────────────┘
+                               │
+                               ▼
+                        ┌──────────────┐
+                        │ AI Provider  │
+                        │ (NVIDIA NIM  │
+                        │  via FCC)    │
+                        └──────────────┘
 ```
 
 ### Key Architectural Principles
@@ -88,6 +91,8 @@ The Mastery Course Generator is a curriculum engineering platform that takes mes
 | **Provenance tracking** | Every curriculum entity links to source fragments |
 | **Classification integrity** | REQUIRED / PREREQUISITE / RECOMMENDED / ENRICHMENT never silently converted |
 | **User edit protection** | `origin: AI_GENERATED \| USER_EDITED` — never overwritten by regeneration |
+| **Spaced review** | Expanding intervals [1,2,4,7,14,30] days based on evidence |
+| **Targeted revision** | QA failures → specific entity repair (never full-course regeneration) |
 
 ---
 
@@ -95,7 +100,7 @@ The Mastery Course Generator is a curriculum engineering platform that takes mes
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | Backend | Next.js API Routes, TypeScript |
 | Database | SQLite via `better-sqlite3` + Drizzle ORM |
 | AI | NVIDIA NIM models via FCC Server (OpenAI-compatible API) |
@@ -259,12 +264,19 @@ The UI recovers after browser refresh by polling the job state.
 | `DELETE` | `/api/courses/:id` | Delete course |
 | `GET` | `/api/courses/:id/sources` | List uploaded sources |
 | `POST` | `/api/courses/:id/sources` | Upload files/prompts (multipart) |
-| `POST` | `/api/courses/:id/analyze` | Analyze source into knowledge package |
+| `POST` | `/api/courses/:id/analyze` | Analyze source(s) into knowledge package |
 | `GET` | `/api/courses/:id/knowledge-package` | Get source interpretation |
 | `PATCH` | `/api/courses/:id/knowledge-package` | Approve/edit interpretation |
 | `POST` | `/api/courses/:id/jobs` | Start generation job |
 | `GET` | `/api/courses/:id/jobs` | List jobs |
 | `GET` | `/api/courses/:id/workspace` | Get curriculum entities |
+| `GET` | `/api/courses/:id/versions` | List course versions |
+| `POST` | `/api/courses/:id/versions` | Create draft version (snapshot) |
+| `GET` | `/api/courses/:id/versions/:versionId` | Get version + snapshot |
+| `POST` | `/api/courses/:id/versions/:versionId` | Publish/restore version |
+| `GET` | `/api/courses/:id/mastery` | List mastery records + recommendations |
+| `GET` | `/api/courses/:id/mastery/:objectiveId` | Get single-objective mastery |
+| `POST` | `/api/courses/:id/practice/attempt` | Submit a practice/assessment attempt |
 | `POST` | `/api/auth/bootstrap` | Create demo session |
 
 ---
@@ -282,10 +294,12 @@ The UI recovers after browser refresh by polling the job state.
 | `lessons` / `activities` | Lesson content + activities |
 | `practice_sets` / `assessments` / `questions` | Practice & assessment items |
 | `mastery_records` | Learner mastery state per objective |
+| `question_attempts` | Learner responses & scores |
 | `provenance` | Entity → source fragment links |
 | `qa_results` | Quality check records |
 | `generation_jobs` / `generation_events` | Job state + streaming progress |
 | `user_edits` | Human edits preserved across regeneration |
+| `course_versions` | Immutable version snapshots |
 
 ---
 
@@ -314,6 +328,10 @@ npm run verify
 
 # Probe available NIM models (requires valid credentials)
 npm run nim:probe
+
+# Database migration / reset
+npm run db:migrate
+npm run db:reset
 ```
 
 ### Adding New Pipeline Stages
@@ -382,29 +400,29 @@ Ensure `AI_DEV_MODE=false` and `FCC_SERVER_API_KEY` is set. Generate a strong `A
 The application supports the full workflow:
 
 1. ✅ Create course from scratch
-2. ✅ Upload syllabus image / PDF / document / prompt
+2. ✅ Upload syllabus image / PDF / document / prompt (multiple)
 3. ✅ Extract and structure contents via NVIDIA NIM
-4. ✅ Review extracted interpretation
-5. ✅ Correct errors
+4. ✅ Review extracted interpretation (with provenance & conflicts)
+5. ✅ Approve interpretation explicitly
 6. ✅ Generate curriculum blueprint
-7. ✅ Edit blueprint
-8. ✅ Generate detailed lessons
-9. ✅ Generate practice sets
+7. ✅ View blueprint hierarchy
+8. ✅ Generate detailed lessons (all objectives)
+9. ✅ Generate practice sets (all objectives, unbounded)
 10. ✅ Generate assessments
-11. ✅ Run curriculum QA
-12. ✅ Automatically revise failed sections
-13. ✅ View source provenance
+11. ✅ Run curriculum QA (deterministic + AI)
+12. ✅ Targeted revision loop (bounded passes, entity-level repair)
+13. ✅ View source provenance (entity → fragment → document)
 14. ✅ Distinguish required vs. enrichment content
-15. ✅ Edit generated material
-16. ✅ Preserve user edits
+15. ✅ Edit generated material (preserved across regeneration)
+16. ✅ Preserve user edits (origin tracking)
 17. ✅ Regenerate individual components
-18. ✅ Maintain course versions
-19. ✅ Track mastery
+18. ✅ Maintain course versions (draft/published/superseded)
+19. ✅ Track mastery (evidence-based, spaced review)
 20. ✅ Support adaptive remediation
-21. ✅ Recover from generation failures
-21. ✅ Survive refresh during generation
-22. ✅ Operate securely (no credential leakage)
-23. ✅ Use FCC Server NVIDIA NIM in production path
+21. ✅ Recover from generation failures (job persistence)
+22. ✅ Survive refresh during generation (polling)
+23. ✅ Operate securely (no credential leakage)
+24. ✅ Use FCC Server NVIDIA NIM in production path
 
 ---
 

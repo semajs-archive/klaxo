@@ -212,7 +212,12 @@ export async function runQa(
   courseId: string,
   jobId?: string,
   runNumber = 1,
-): Promise<{ totalChecks: number; failedChecks: number; autoFixable: number }> {
+): Promise<{
+  totalChecks: number;
+  failedChecks: number;
+  autoFixable: number;
+  autoFixableChecks: Array<{ checkKey: string; entityType?: string; entityId?: string; message: string }>;
+}> {
   const deterministic = runDeterministicChecks(courseId);
 
   let aiChecks: QaResult['checks'] = [];
@@ -240,5 +245,11 @@ export async function runQa(
     totalChecks: allChecks.length,
     failedChecks: failed.length,
     autoFixable: autoFixable.length,
+    autoFixableChecks: autoFixable.map((c) => ({
+      checkKey: c.checkKey,
+      entityType: c.entityType ?? undefined,
+      entityId: c.entityId ?? undefined,
+      message: c.message,
+    })),
   };
 }

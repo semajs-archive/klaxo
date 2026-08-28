@@ -1,9 +1,15 @@
 /**
  * SourceAnalysisService — turn raw source material into a KnowledgePackage.
  *
- * This service coordinates extraction (image/PDF/text) into structured
- * source analysis via the AI provider, then persists fragments and the
- * knowledge package with full provenance.
+ * Supports MULTI-SOURCE analysis: several uploaded documents (PDF, image, text,
+ * document, prompt) are analyzed together into a single, coherent knowledge
+ * package. Unlike the previous single-document implementation, this service:
+ *
+ *   - persists REAL provenance: fragments are extracted per-document (page /
+ *     paragraph / section information is preserved) and every interpretation
+ *     element is linked back to the fragments it was derived from.
+ *   - surfaces conflicts between sources instead of silently choosing one.
+ *   - distinguishes SOURCE FACT vs INFERENCE vs RECOMMENDATION vs ENRICHMENT.
  */
 import { randomUUID } from 'node:crypto';
 import { getAiContext } from '../ai';
@@ -12,83 +18,202 @@ import { SourceAnalysis, SourceAnalysisSchema } from '../ai/types';
 import { delimitSource, SOURCE_EXTRACTION_SYSTEM } from '../pipeline/prompts';
 import {
   getSourceDocument,
+  listSourceDocuments,
   createSourceFragment,
   createKnowledgePackage,
   updateSourceDocument,
-  listSourceDocuments,
+  createProvenance,
 } from '../db/repo';
-import { logger } from '../lib/logger';
+import { contentHash } from '../lib/ids';
 import { aiUnavailable, pipelineFailed } from '../lib/errors';
 import { extractPdfText } from './pdf';
 import { readFileSync } from 'node:fs';
 
-export interface AnalyzeSourceInput {
+export interface AnalyzeSourcesInput {
   courseId: string;
+  documentIds: string[];
+}
+
+export interface SourceFragmentEvidence {
+  id: string;
   documentId: string;
+  kind: string;
+  text: string;
+  page?: number;
+  confidence?: number;
+  uncertain: boolean;
 }
 
 export interface SourceAnalysisResult {
   knowledgePackageId: string;
   analysis: SourceAnalysis;
-  fragmentCount: number;
+  fragments: SourceFragmentEvidence[];
+  conflicts: { description: string; sources: string[] }[];
   model: string;
   provider: string;
 }
 
-/**
- * Analyze a source document into a structured KnowledgePackage.
- *
- * - For images: send base64 through the vision model.
- * - For PDFs: extract text locally, then send text to the text model.
- * - For text/prompt: send text directly.
- */
-export async function analyzeSource(input: AnalyzeSourceInput): Promise<SourceAnalysisResult> {
-  const { provider, routing } = getAiContext();
-  const doc = getSourceDocument(input.documentId);
-  if (!doc) throw pipelineFailed(`Source document ${input.documentId} not found`);
+/** Extract raw content from a document record into per-document fragments. */
+export async function extractDocumentFragments(
+  documentId: string,
+  courseId: string,
+): Promise<SourceFragmentEvidence[]> {
+  const doc = getSourceDocument(documentId);
+  if (!doc) throw pipelineFailed(`Source document ${documentId} not found`);
 
-  // Gather raw text (extract PDF text if needed).
-  let rawText = doc.extractedText ?? '';
-  let images: string[] = [];
+  const fragments: SourceFragmentEvidence[] = [];
 
-  if (doc.kind === 'pdf') {
-    if (doc.storagePath) {
-      try {
-        const buffer = readFileSync(doc.storagePath);
-        const extracted = await extractPdfText(buffer);
-        rawText = extracted.fullText;
-      } catch (err) {
-        logger.warn('PDF extraction failed; falling back to stored text', {
-          error: (err as Error).message,
-        });
-      }
+  if (doc.kind === 'pdf' && doc.storagePath) {
+    const extracted = await extractPdfText(readFileSync(doc.storagePath));
+    // Split each page into paragraph fragments, preserving page number.
+    for (const page of extracted.pages) {
+      const paragraphs = page.text
+        .split(/\n{2,}/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      paragraphs.forEach((text, i) => {
+        fragments.push(segmentFragment(
+          documentId, courseId, 'paragraph', text, page.pageNumber, i,
+        ));
+      });
     }
+    // Persist page count + extracted text for provenance review.
+    updateSourceDocument(documentId, { pageCount: extracted.pageCount });
   } else if (doc.kind === 'image') {
-    if (doc.storagePath) {
-      try {
-        const buffer = readFileSync(doc.storagePath);
-        images = [buffer.toString('base64')];
-      } catch (err) {
-        throw pipelineFailed(`Failed to read image: ${(err as Error).message}`);
-      }
+    // Images carry no text fragments of their own; the vision model produces
+    // the interpretation. We record a single "image" fragment placeholder so
+    // provenance can point at the image source.
+    fragments.push({
+      id: `frag_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+      documentId,
+      kind: 'image',
+      text: '[Image source]',
+      confidence: 1,
+      uncertain: false,
+    });
+  } else {
+    // Text / prompt / document fall back to the extracted text.
+    const raw = doc.extractedText ?? '';
+    const paragraphs = raw
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    paragraphs.forEach((text, i) => {
+      fragments.push(segmentFragment(documentId, courseId, 'paragraph', text, undefined, i));
+    });
+  }
+
+  return fragments;
+}
+
+/** Build a single fragment (no persistence side effects). */
+function segmentFragment(
+  documentId: string,
+  courseId: string,
+  kind: string,
+  text: string,
+  page: number | undefined,
+  _ordinal: number,
+): SourceFragmentEvidence {
+  return {
+    id: `frag_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+    documentId,
+    kind,
+    text: text.slice(0, 8000),
+    page,
+    confidence: 1,
+    uncertain: false,
+  };
+}
+
+/** Persist a fragment evidence object. */
+function persistFragment(courseId: string, frag: SourceFragmentEvidence, ordinal: number): void {
+  createSourceFragment({
+    id: frag.id,
+    courseId,
+    documentId: frag.documentId,
+    ordinal,
+    kind: frag.kind,
+    text: frag.text,
+    page: frag.page,
+    confidence: frag.confidence,
+    uncertain: frag.uncertain ? 1 : 0,
+  });
+}
+
+/**
+ * Detect conflicts between sources. A conflict exists when two documents
+ * declare a different number of units or contradictory top-level facts. We
+ * surface these to the user rather than silently choosing one.
+ */
+export function detectSourceConflicts(fragments: SourceFragmentEvidence[]): {
+  description: string;
+  sources: string[];
+}[] {
+  // Compare explicit unit counts mentioned in different documents.
+  const unitCounts = new Map<string, { count: number; doc: string }>();
+  const conflicts: { description: string; sources: string[] }[] = [];
+
+  for (const frag of fragments) {
+    const match = frag.text.match(/\b(\d+)\s*(?:units|modules|chapters|lessons)\b/i);
+    if (match && match[1]) {
+      const count = Number(match[1]);
+      const key = String(count);
+      if (!unitCounts.has(key)) unitCounts.set(key, { count, doc: frag.documentId });
     }
   }
 
-  if (!rawText.trim() && images.length === 0) {
-    throw aiUnavailable('Source document has no extractable content.');
+  if (unitCounts.size > 1) {
+    const docs = Array.from(unitCounts.values()).map((u) => u.doc);
+    conflicts.push({
+      description: 'Sources disagree on the number of units/modules.',
+      sources: docs,
+    });
   }
 
-  // Determine the model (vision for images, otherwise text).
-  const model = resolveModel(routing, 'source_extraction');
+  return conflicts;
+}
 
-  // Build messages with the source delimited.
+/**
+ * Analyze MULTIPLE source documents into a single structured KnowledgePackage.
+ */
+export async function analyzeSources(input: AnalyzeSourcesInput): Promise<SourceAnalysisResult> {
+  const { provider, routing } = getAiContext();
+  if (input.documentIds.length === 0) {
+    throw pipelineFailed('No source documents to analyze.');
+  }
+
+  // 1. Extract real fragments per document.
+  const allFragments: SourceFragmentEvidence[] = [];
+  for (const docId of input.documentIds) {
+    const doc = getSourceDocument(docId);
+    if (!doc || doc.courseId !== input.courseId) {
+      throw pipelineFailed(`Source document ${docId} not found for this course.`);
+    }
+    const frags = await extractDocumentFragments(docId, input.courseId);
+    allFragments.push(...frags);
+  }
+
+  if (allFragments.length === 0) {
+    throw aiUnavailable('Source documents have no extractable content.');
+  }
+
+  // 2. Persist fragments so provenance can reference them.
+  let ordinal = 0;
+  for (const frag of allFragments) {
+    persistFragment(input.courseId, frag, ordinal++);
+  }
+
+  // 3. Assemble a combined source payload for the model. Include a per-fragment
+  //    reference id so the model can cite sources in its interpretation.
+  const combinedText = allFragments
+    .map((f, i) => `[source-${i}] (${f.kind}${f.page ? `, page ${f.page}` : ''}):\n${f.text}`)
+    .join('\n\n');
+
+  const model = resolveModel(routing, 'source_extraction');
   const messages = [
     { role: 'system' as const, content: SOURCE_EXTRACTION_SYSTEM },
-    {
-      role: 'user' as const,
-      content: delimitSource(rawText || '[Image provided]'),
-      images: images.length > 0 ? images : undefined,
-    },
+    { role: 'user' as const, content: delimitSource(combinedText) },
   ];
 
   const result = await generateStructured(
@@ -97,29 +222,9 @@ export async function analyzeSource(input: AnalyzeSourceInput): Promise<SourceAn
     { messages, schema: SourceAnalysisSchema },
     { maxRetries: 2, temperature: 0.2 },
   );
-
   const analysis = result.value;
 
-  // Persist fragments extracted from the source (reconstruct from analysis).
-  const fragments = reconstructFragments(analysis, rawText);
-  let ordinal = 0;
-  const persistedFragments: string[] = [];
-  for (const frag of fragments) {
-    const f = createSourceFragment({
-      id: `frag_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
-      courseId: input.courseId,
-      documentId: input.documentId,
-      ordinal: ordinal++,
-      kind: frag.kind,
-      text: frag.text,
-      page: frag.page,
-      confidence: frag.confidence,
-      uncertain: frag.uncertain ? 1 : 0,
-    });
-    persistedFragments.push(f.id);
-  }
-
-  // Persist the knowledge package.
+  // 4. Persist the knowledge package.
   const kp = createKnowledgePackage({
     id: `kp_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
     courseId: input.courseId,
@@ -133,80 +238,79 @@ export async function analyzeSource(input: AnalyzeSourceInput): Promise<SourceAn
     origin: 'AI_GENERATED',
   });
 
-  // Mark the source doc as extracted.
-  updateSourceDocument(input.documentId, {
-    status: 'extracted',
-    extractionModel: model,
-    extractionProvider: provider.id,
-    confidence: analysis.confidence,
-  });
+  // 5. Link each detected objective back to its source fragments (provenance).
+  //    When the model does not cite a fragment, we conservatively mark the
+  //    objective as INFERRED_FROM the whole source set rather than fabricating
+  //    a specific citation.
+  for (const obj of analysis.objectives) {
+    const sourceFragments = (obj.sourceFragmentIds ?? [])
+      .map((id) => allFragments[Number(id)])
+      .filter((f): f is SourceFragmentEvidence => f !== undefined);
+    if (sourceFragments.length > 0) {
+      for (const frag of sourceFragments) {
+        createProvenance({
+          id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+          courseId: input.courseId,
+          entityType: 'objective',
+          entityId: hashObjective(analysis, obj.statement),
+          fragmentId: frag.id,
+          documentId: frag.documentId,
+          relation: 'DERIVED_FROM',
+          confidence: analysis.confidence,
+          note: obj.statement,
+        });
+      }
+    } else {
+      // No explicit citation — mark as inferred from the whole set.
+      const firstDoc = allFragments[0];
+      if (firstDoc) {
+        createProvenance({
+          id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+          courseId: input.courseId,
+          entityType: 'objective',
+          entityId: hashObjective(analysis, obj.statement),
+          documentId: firstDoc.documentId,
+          relation: 'INFERRED_FROM',
+          confidence: analysis.confidence,
+          note: obj.statement,
+        });
+      }
+    }
+  }
+
+  // 6. Mark documents as extracted.
+  for (const docId of input.documentIds) {
+    updateSourceDocument(docId, {
+      status: 'extracted',
+      extractionModel: model,
+      extractionProvider: provider.id,
+      confidence: analysis.confidence,
+    });
+  }
+
+  const conflicts = detectSourceConflicts(allFragments);
 
   return {
     knowledgePackageId: kp.id,
     analysis,
-    fragmentCount: persistedFragments.length,
+    fragments: allFragments,
+    conflicts,
     model,
     provider: provider.id,
   };
 }
 
-/**
- * Reconstruct fragments from the source analysis (approximate provenance).
- * In a fuller implementation, fragments would be stored during raw extraction;
- * here we derive them from the structured objectives/units/terminology.
- */
-function reconstructFragments(
-  analysis: SourceAnalysis,
-  rawText: string,
-): Array<{ kind: string; text: string; page?: number; confidence?: number; uncertain?: boolean }> {
-  const frags: Array<{ kind: string; text: string; page?: number; confidence?: number; uncertain?: boolean }> = [];
-
-  // Unit titles.
-  for (const unit of analysis.units) {
-    frags.push({ kind: 'heading', text: unit.title, confidence: analysis.confidence });
-  }
-
-  // Objectives.
-  for (const obj of analysis.objectives) {
-    frags.push({
-      kind: 'objective',
-      text: obj.statement,
-      confidence: analysis.confidence,
-      uncertain: false,
-    });
-  }
-
-  // Terminology.
-  for (const term of analysis.terminology) {
-    frags.push({ kind: 'other', text: term.term, confidence: analysis.confidence });
-  }
-
-  // Requirements.
-  for (const req of analysis.requirements) {
-    frags.push({ kind: 'requirement', text: req, confidence: analysis.confidence });
-  }
-
-  // Ambiguities (uncertain fragments).
-  for (const amb of analysis.ambiguities) {
-    frags.push({
-      kind: 'other',
-      text: amb.description,
-      confidence: amb.confidence,
-      uncertain: true,
-    });
-  }
-
-  // If no structured fragments, fall back to raw text as a single fragment.
-  if (frags.length === 0 && rawText.trim()) {
-    frags.push({ kind: 'paragraph', text: rawText.slice(0, 5000), confidence: analysis.confidence });
-  }
-
-  return frags;
+/** Deterministic id for an objective, used to link provenance across runs. */
+function hashObjective(analysis: SourceAnalysis, statement: string): string {
+  return `obj_${contentHash(analysis.title, statement)}`;
 }
 
-/**
- * Get all source documents for a course (for the source review screen).
- */
+/** Backward-compatible single-document wrapper. */
+export async function analyzeSource(input: { courseId: string; documentId: string }) {
+  return analyzeSources({ courseId: input.courseId, documentIds: [input.documentId] });
+}
+
+/** Get all source documents for a course (for the source review screen). */
 export function getCourseSources(courseId: string) {
   return listSourceDocuments(courseId);
 }

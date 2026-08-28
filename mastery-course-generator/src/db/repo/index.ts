@@ -401,6 +401,10 @@ export function deleteUnit(id: string) {
   return getDb().delete(units).where(eq(units.id, id)).run();
 }
 
+export function deleteUnitsByCourse(courseId: string) {
+  return getDb().delete(units).where(eq(units.courseId, courseId)).run();
+}
+
 /* -------------------------------------------------------------- topics ---- */
 
 export function createTopic(input: {
@@ -445,6 +449,10 @@ export function listTopics(courseId: string) {
     .where(eq(topics.courseId, courseId))
     .orderBy(asc(topics.ordinal))
     .all();
+}
+
+export function deleteTopicsByCourse(courseId: string) {
+  return getDb().delete(topics).where(eq(topics.courseId, courseId)).run();
 }
 
 /* ---------------------------------------------------------- objectives ---- */
@@ -511,6 +519,10 @@ export function listObjectivesForUnit(unitId: string) {
     .all();
 }
 
+export function deleteObjectivesByCourse(courseId: string) {
+  return getDb().delete(objectives).where(eq(objectives.courseId, courseId)).run();
+}
+
 export function updateObjective(id: string, data: Partial<{
   ordinal: number;
   code: string;
@@ -562,6 +574,10 @@ export function listDependencies(courseId: string) {
     .from(objectiveDependencies)
     .where(eq(objectiveDependencies.courseId, courseId))
     .all();
+}
+
+export function deleteDependenciesByCourse(courseId: string) {
+  return getDb().delete(objectiveDependencies).where(eq(objectiveDependencies.courseId, courseId)).run();
 }
 
 /* -------------------------------------------------------------- lessons ---- */
@@ -626,6 +642,10 @@ export function listLessonsForUnit(unitId: string) {
     .all();
 }
 
+export function deleteLessonsByCourse(courseId: string) {
+  return getDb().delete(lessons).where(eq(lessons.courseId, courseId)).run();
+}
+
 export function updateLesson(id: string, data: Partial<{
   ordinal: number;
   title: string;
@@ -684,6 +704,10 @@ export function listActivitiesForLesson(lessonId: string) {
     .all();
 }
 
+export function deleteActivitiesByCourse(courseId: string) {
+  return getDb().delete(activities).where(eq(activities.courseId, courseId)).run();
+}
+
 /* ------------------------------------------------------- practiceSets ---- */
 
 export function createPracticeSet(input: {
@@ -719,6 +743,10 @@ export function listPracticeSets(courseId: string) {
     .where(eq(practiceSets.courseId, courseId))
     .orderBy(asc(practiceSets.ordinal))
     .all();
+}
+
+export function deletePracticeSetsByCourse(courseId: string) {
+  return getDb().delete(practiceSets).where(eq(practiceSets.courseId, courseId)).run();
 }
 
 /* --------------------------------------------------------- assessments ---- */
@@ -760,6 +788,10 @@ export function listAssessments(courseId: string) {
     .where(eq(assessments.courseId, courseId))
     .orderBy(asc(assessments.ordinal))
     .all();
+}
+
+export function deleteAssessmentsByCourse(courseId: string) {
+  return getDb().delete(assessments).where(eq(assessments.courseId, courseId)).run();
 }
 
 /* ------------------------------------------------------------ questions ---- */
@@ -817,6 +849,10 @@ export function listQuestions(courseId: string) {
     .all();
 }
 
+export function getQuestion(id: string) {
+  return getDb().select().from(questions).where(eq(questions.id, id)).get();
+}
+
 export function listQuestionsForAssessment(assessmentId: string) {
   return getDb()
     .select()
@@ -833,6 +869,10 @@ export function listQuestionsForObjective(objectiveId: string) {
     .where(eq(questions.objectiveId, objectiveId))
     .orderBy(asc(questions.ordinal))
     .all();
+}
+
+export function deleteQuestionsByCourse(courseId: string) {
+  return getDb().delete(questions).where(eq(questions.courseId, courseId)).run();
 }
 
 /* ------------------------------------------------------- masteryRecords ---- */
@@ -981,6 +1021,18 @@ export function listProvenanceForEntity(entityType: string, entityId: string) {
     .from(provenance)
     .where(and(eq(provenance.entityType, entityType), eq(provenance.entityId, entityId)))
     .all();
+}
+
+export function listProvenance(courseId: string) {
+  return getDb()
+    .select()
+    .from(provenance)
+    .where(eq(provenance.courseId, courseId))
+    .all();
+}
+
+export function deleteProvenanceByCourse(courseId: string) {
+  return getDb().delete(provenance).where(eq(provenance.courseId, courseId)).run();
 }
 
 /* ----------------------------------------------------------- qaResults ---- */

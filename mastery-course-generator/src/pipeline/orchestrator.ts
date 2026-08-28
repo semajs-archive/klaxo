@@ -18,7 +18,7 @@ import {
   createGenerationEvent,
 } from '../db/repo';
 import { listObjectives, listUnits } from '../db/repo';
-import { analyzeSource } from '../services/source-analysis';
+import { analyzeSources } from '../services/source-analysis';
 import {
   generateBlueprint,
   persistBlueprint,
@@ -30,6 +30,7 @@ import {
   persistAssessment,
 } from '../services/course-generation';
 import { runQa } from '../services/qa';
+import { repairQaFailures } from '../services/revision';
 import { JobKind, JobState, CurriculumBlueprint } from '../ai/types';
 import { pipelineFailed } from '../lib/errors';
 
@@ -112,15 +113,18 @@ export function startJob(input: StartJobInput): { jobId: string; created: boolea
 /**
  * Execute an ANALYZE_SOURCE job.
  */
-export async function executeAnalyzeSourceJob(jobId: string, courseId: string, documentId: string): Promise<void> {
-  await setState(jobId, 'ANALYZING', 'source_extraction', 0.1, 'Reading source…');
-  await emit(jobId, courseId, 'source_extraction', 'Reading source…', 0);
+export async function executeAnalyzeSourceJob(jobId: string, courseId: string, documentIds: string[]): Promise<void> {
+  await setState(jobId, 'ANALYZING', 'source_extraction', 0.1, 'Reading sources…');
+  await emit(jobId, courseId, 'source_extraction', 'Reading sources…', 0);
 
   try {
-    await setState(jobId, 'ANALYZING', 'source_extraction', 0.3, 'Structuring syllabus…');
-    await emit(jobId, courseId, 'source_extraction', 'Structuring syllabus…', 1);
+    await setState(jobId, 'ANALYZING', 'source_extraction', 0.3, 'Extracting structure…');
+    await emit(jobId, courseId, 'source_extraction', 'Extracting structure…', 1);
 
-    const result = await analyzeSource({ courseId, documentId });
+    await setState(jobId, 'ANALYZING', 'source_extraction', 0.6, 'Building knowledge package…');
+    await emit(jobId, courseId, 'source_extraction', 'Building knowledge package…', 2);
+
+    const result = await analyzeSources({ courseId, documentIds });
 
     await setState(jobId, 'COMPLETED', 'source_extraction', 1.0, 'Source analyzed.');
     updateGenerationJob(jobId, {
@@ -130,7 +134,7 @@ export async function executeAnalyzeSourceJob(jobId: string, courseId: string, d
       finishedAt: Date.now(),
       result: JSON.stringify(result),
     });
-    await emit(jobId, courseId, 'source_extraction', 'Source analyzed.', 2);
+    await emit(jobId, courseId, 'source_extraction', 'Source analyzed.', 3);
   } catch (err) {
     await setState(jobId, 'FAILED', 'source_extraction', 0, `Source analysis failed: ${(err as Error).message}`);
     updateGenerationJob(jobId, {
@@ -219,13 +223,19 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
       }
     }
 
-    // 3. Practice + assessment per objective.
+    // 3. Practice for EVERY objective (no artificial cap — cost control comes
+    //    from bounded parallelism + caching at the AI layer, never by dropping
+    //    objectives).
     await setState(jobId, 'GENERATING', 'practice', 0.72, 'Generating practice…');
     await emit(jobId, courseId, 'practice', 'Generating practice sets…', ordinal++);
 
-    for (const obj of objectives.slice(0, 5)) { // bounded for cost control
+    let donePractice = 0;
+    for (const obj of objectives) {
       const practice = await generatePractice(courseId, obj.id);
       persistPracticeSet(courseId, obj.id, undefined, practice);
+      donePractice++;
+      const progress = 0.72 + 0.1 * (donePractice / Math.max(objectives.length, 1));
+      await setState(jobId, 'GENERATING', 'practice', progress, `Practice ${donePractice}/${objectives.length}…`);
     }
 
     await setState(jobId, 'GENERATING', 'assessments', 0.82, 'Generating assessments…');
@@ -237,20 +247,29 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
       persistAssessment(courseId, undefined, assessment);
     }
 
-    // 4. QA.
-    await setState(jobId, 'VALIDATING', 'qa', 0.9, 'Running QA…');
-    await emit(jobId, courseId, 'qa', 'Running curriculum QA…', ordinal++);
+    // 4. QA + bounded, targeted revision loop.
+    let qa = await runQa(courseId, jobId, 1);
+    let revisionPass = 0;
+    const MAX_REVISION_PASSES = 3;
 
-    const qa = await runQa(courseId, jobId, 1);
+    while (qa.autoFixable > 0 && revisionPass < MAX_REVISION_PASSES) {
+      revisionPass++;
+      await setState(jobId, 'REVISING', 'revision', 0.9 + 0.08 * revisionPass, `Fixing ${qa.autoFixable} issue(s)… (pass ${revisionPass})`);
+      await emit(jobId, courseId, 'revision', `QA found ${qa.autoFixable} auto-fixable issue(s). Repairing (pass ${revisionPass})…`, ordinal++);
 
-    // 5. Revision loop (bounded).
-    if (qa.autoFixable > 0) {
-      await setState(jobId, 'REVISING', 'revision', 0.93, `Fixing ${qa.autoFixable} issue(s)…`);
-      await emit(jobId, courseId, 'revision', `QA found ${qa.autoFixable} auto-fixable issue(s). Revising…`, ordinal++);
-      // For this implementation, deterministic auto-fixable gaps are fixed by
-      // regenerating a catch-all assessment to restore coverage.
-      // (Simplified bounded revision.)
-      await emit(jobId, courseId, 'revision', 'Revision complete.', ordinal++);
+      const repair = await repairQaFailures(courseId, qa.autoFixableChecks);
+      await emit(
+        jobId, courseId, 'revision',
+        `Repaired ${repair.repaired} issue(s), skipped ${repair.skipped}.`,
+        ordinal++,
+      );
+
+      // Re-run QA on the impacted curriculum.
+      qa = await runQa(courseId, jobId, revisionPass + 1);
+    }
+
+    if (qa.autoFixable > 0 && revisionPass >= MAX_REVISION_PASSES) {
+      await emit(jobId, courseId, 'revision', `Revision bound reached; ${qa.autoFixable} issue(s) remain (may need manual review).`, ordinal++, 'warn');
     }
 
     // 6. Done.
@@ -326,9 +345,15 @@ export async function runJob(jobId: string): Promise<void> {
   const input = job.input ? JSON.parse(job.input) : {};
 
   switch (job.kind) {
-    case 'ANALYZE_SOURCE':
-      await executeAnalyzeSourceJob(jobId, job.courseId, input.documentId);
+    case 'ANALYZE_SOURCE': {
+      const docIds: string[] = Array.isArray(input.documentIds)
+        ? input.documentIds
+        : input.documentId
+          ? [input.documentId]
+          : [];
+      await executeAnalyzeSourceJob(jobId, job.courseId, docIds);
       break;
+    }
     case 'BLUEPRINT':
       await executeBlueprintJob(jobId, job.courseId);
       break;

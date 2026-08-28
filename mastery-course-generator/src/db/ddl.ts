@@ -53,7 +53,7 @@ export function indexDdl(table: SQLiteTable): string[] {
   for (const idx of cfg.indexes) {
     const b = idx.config;
     const cols = (b.columns ?? [])
-      .map((c) => ('name' in c ? `"${(c as { name: string }).name}"` : null))
+      .map((c) => columnName(c))
       .filter((c): c is string => c !== null);
     if (cols.length === 0) continue;
     out.push(
@@ -62,6 +62,19 @@ export function indexDdl(table: SQLiteTable): string[] {
     );
   }
   return out;
+}
+
+/**
+ * Resolve a column name from an index column, which Drizzle types as either a
+ * {@link Column} (with `.name`) or a raw {@link SQL} expression (e.g. a
+ * functional index). For raw expressions we fall back to `null` so the index is
+ * skipped rather than emitting invalid DDL.
+ */
+function columnName(c: unknown): string | null {
+  if (c && typeof c === 'object' && 'name' in c && typeof (c as { name?: unknown }).name === 'string') {
+    return (c as { name: string }).name;
+  }
+  return null;
 }
 
 /** Full schema DDL, tables first then indexes. */

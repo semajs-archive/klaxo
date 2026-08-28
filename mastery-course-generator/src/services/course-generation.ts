@@ -174,7 +174,7 @@ export async function generateLesson(
   unitId: string,
   objectiveIds: string[],
   topicId?: string,
-  ordinal = 0,
+  _ordinal = 0,
 ): Promise<LessonContent> {
   const { provider, routing } = getAiContext();
   const model = resolveModel(routing, 'lesson_generation');
