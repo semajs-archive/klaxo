@@ -1,6 +1,20 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
+import { Bricolage_Grotesque, Inter, Spline_Sans_Mono } from 'next/font/google';
+import { HeaderNav, BottomNav } from '@/components/SiteNav';
 import './globals.css';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-bricolage',
+  weight: ['500', '600', '700', '800'],
+});
+const splineMono = Spline_Sans_Mono({
+  subsets: ['latin'],
+  variable: '--font-spline-mono',
+  weight: ['400', '500'],
+});
 
 export const metadata: Metadata = {
   title: 'KLAXO — Curriculum Engineering',
@@ -8,26 +22,34 @@ export const metadata: Metadata = {
     'KLAXO transforms messy educational material into structured, grounded, mastery-oriented courses.',
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 function Wordmark() {
   return (
     <span className="inline-flex items-center gap-2.5">
       <span
         aria-hidden="true"
-        className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-sm ring-1 ring-primary-400/20"
+        className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-foreground"
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-4 w-4"
-        >
-          <path d="M4 19.5 9.5 4l3 7 3-7L20.5 19.5" />
+        {/* Klaxon horn */}
+        <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+          <path
+            d="M4 14V10c0-.6.4-1 1-1h3l6-5c.7-.5 1.5 0 1.5.8v14.4c0 .8-.8 1.3-1.5.8l-6-5H5c-.6 0-1-.4-1-1Z"
+            fill="currentColor"
+          />
+          <path
+            d="M18.5 9.5c.9 1.5.9 3.5 0 5"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
         </svg>
       </span>
-      <span className="text-[17px] font-semibold tracking-[0.18em]">KLAXO</span>
+      <span className="font-display text-[21px] font-extrabold tracking-tight">klaxo</span>
     </span>
   );
 }
@@ -35,37 +57,25 @@ function Wordmark() {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-background font-sans text-foreground antialiased">
-        <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 bg-grid" />
-        <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
-          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <body
+        className={`${inter.variable} ${bricolage.variable} ${splineMono.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
+      >
+        <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-xl">
+          <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
             <Link
               href="/dashboard"
-              className="rounded-lg text-foreground transition-opacity hover:opacity-80 focus-visible:outline-none"
+              className="rounded-xl text-foreground transition-opacity hover:opacity-80 focus-visible:outline-none"
               aria-label="KLAXO — go to dashboard"
             >
               <Wordmark />
             </Link>
-
-            <nav aria-label="Primary" className="flex items-center gap-1">
-              <Link
-                href="/"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                Home
-              </Link>
-              <Link
-                href="/dashboard"
-                className="rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
-              >
-                Dashboard
-              </Link>
-            </nav>
+            <HeaderNav />
           </div>
         </header>
-        <main className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <main className="relative mx-auto w-full max-w-6xl px-4 py-8 pb-24 sm:px-6 sm:pb-10 lg:px-8 lg:py-10">
           {children}
         </main>
+        <BottomNav />
       </body>
     </html>
   );
