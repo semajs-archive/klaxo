@@ -111,5 +111,10 @@ jobs:
     name: Verify
     runs-on: ubuntu-latest
     needs: [typecheck, lint, unit-tests, integration-tests, build, docker]
+    defaults:
+      run:
+        # This job never checks out the repo, so the workflow-level
+        # working-directory does not exist here.
+        working-directory: .
     steps:
       - run: echo "All checks passed"
