@@ -130,3 +130,11 @@ export function humanizeKind(kind: string): string {
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/**
+ * Strip a leading "Unit N:" prefix from a unit title so callers can prepend
+ * their own numbering without doubling it ("Unit 1: Unit 1: Foundations").
+ */
+export function unitDisplayTitle(title: string): string {
+  return title.replace(/^unit\s*\d+\s*[:.\-–]\s*/i, '');
+}

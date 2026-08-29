@@ -46,9 +46,27 @@ export function StepIndicator({
 }: StepIndicatorProps) {
   const currentIndex = steps.findIndex((s) => s.id === currentStep);
 
+  const currentLabel = steps[currentIndex]?.label ?? steps[0]?.label ?? '';
+  const doneCount = steps.filter((s) => completedSteps.includes(s.id)).length;
+
   return (
     <nav aria-label="Progress" className="mb-8">
-      <ol className="flex items-start">
+      {/* Compact phone version: step counter + progress bar */}
+      <div className="sm:hidden">
+        <div className="flex items-baseline justify-between">
+          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            Step {currentIndex + 1} of {steps.length}
+          </span>
+          <span className="font-display text-sm font-bold">{currentLabel}</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full border border-ink/20 bg-muted">
+          <div
+            className="h-full rounded-full bg-brand-500 transition-all"
+            style={{ width: `${Math.max(8, Math.round(((doneCount + 0.5) / steps.length) * 100))}%` }}
+          />
+        </div>
+      </div>
+      <ol className="hidden items-start sm:flex">
         {steps.map((step, index) => {
           const status = statusFor(
             step.id,
@@ -67,18 +85,18 @@ export function StepIndicator({
           const isLocked = status === 'locked';
 
           return (
-            <li key={step.id} className="flex items-start">
+            <li key={step.id} className={clsx('flex items-start', !isLast && 'flex-1')}>
               <div className="flex flex-col items-center">
                 <div
                   className={clsx(
-                    'flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors',
-                    isCompleted && 'bg-primary text-primary-foreground',
-                    isCurrent && 'bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-2 ring-offset-background',
-                    isWarning && 'bg-warning text-warning-foreground',
-                    isFailed && 'bg-error text-error-foreground',
-                    isLocked && 'bg-muted text-muted-foreground opacity-50',
+                    'flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] font-display text-sm font-bold transition-colors',
+                    isCompleted && 'border-ink bg-primary text-primary-foreground',
+                    isCurrent && 'border-ink bg-brand-400 text-foreground shadow-pop-sm',
+                    isWarning && 'border-ink bg-warning text-warning-foreground',
+                    isFailed && 'border-ink bg-error text-error-foreground',
+                    isLocked && 'border-border bg-muted text-muted-foreground opacity-60',
                     (!isCompleted && !isCurrent && !isWarning && !isFailed && !isLocked) &&
-                      'bg-muted text-muted-foreground',
+                      'border-border bg-muted text-muted-foreground',
                   )}
                   aria-current={isCurrent ? 'step' : undefined}
                 >
@@ -108,11 +126,11 @@ export function StepIndicator({
                 </div>
                 <span
                   className={clsx(
-                    'mt-2 text-sm font-medium hidden sm:block',
+                    'mt-2 hidden text-center font-mono text-[10px] uppercase tracking-[0.1em] sm:block',
                     isCurrent
-                      ? 'text-foreground'
+                      ? 'font-medium text-foreground'
                       : isWarning
-                      ? 'text-warning'
+                      ? 'text-warning-subtle-foreground'
                       : isFailed
                       ? 'text-error'
                       : 'text-muted-foreground',
@@ -124,8 +142,8 @@ export function StepIndicator({
               {!isLast && (
                 <div
                   className={clsx(
-                    'hidden grow lg:block h-0.5 mt-5 mx-1',
-                    isCompleted ? 'bg-primary' : 'bg-muted',
+                    'mx-1.5 mt-5 h-[2px] flex-1 rounded-full',
+                    isCompleted ? 'bg-ink' : 'bg-border',
                   )}
                 />
               )}

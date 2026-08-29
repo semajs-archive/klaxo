@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "AI-powered curriculum engineering platform: turns raw educational material into structured, grounded, mastery-oriented courses using FCC Server NVIDIA NIM models.",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

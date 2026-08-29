@@ -191,8 +191,8 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">KLAXO</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Your courses</h1>
+          <p className="kicker">My courses</p>
+          <h1 className="mt-2 font-display text-4xl font-extrabold">Pick up where you left off.</h1>
           <p className="mt-1 text-muted-foreground">
             Engineer mastery-oriented curricula from your own material.
           </p>
@@ -285,7 +285,7 @@ export default function DashboardPage() {
             id="sort-course"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOrder)}
-            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-11 rounded-xl border-[1.5px] border-input bg-card px-3 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <option value="updated-desc">Recently updated</option>
             <option value="updated-asc">Oldest updated</option>
@@ -405,11 +405,11 @@ export default function DashboardPage() {
                       </span>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2.5">
                       <Link
                         href={`/wizard/${course.id}`}
                         className={cn(
-                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-brand-500 px-3 py-2 font-display text-sm font-bold shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         )}
                       >
                         Continue
@@ -417,10 +417,10 @@ export default function DashboardPage() {
                       <Link
                         href={`/workspace/${course.id}`}
                         className={cn(
-                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-card px-3 py-2 font-display text-sm font-bold shadow-pop-sm transition-all hover:bg-secondary active:translate-y-[2px] active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         )}
                       >
-                        Open workspace
+                        Workspace
                       </Link>
                     </div>
                   </CardContent>

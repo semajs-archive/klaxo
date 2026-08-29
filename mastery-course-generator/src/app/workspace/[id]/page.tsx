@@ -37,6 +37,7 @@ import {
   masteryVariant,
   recommendationLabel,
   relativeDays,
+  unitDisplayTitle,
 } from '@/components/workspace/helpers';
 
 type TabId =
@@ -191,7 +192,7 @@ export default function WorkspacePage() {
       <div className="mb-6">
         <Link
           href="/dashboard"
-          className="mb-2 inline-block text-sm text-muted-foreground hover:text-foreground"
+          className="mb-3 inline-block font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
         >
           ← Back to Dashboard
         </Link>
@@ -207,17 +208,17 @@ export default function WorkspacePage() {
         </p>
       </div>
 
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b">
+      <div className="mb-6 flex gap-2 overflow-x-auto pb-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'whitespace-nowrap px-4 py-2 text-sm font-medium capitalize transition-colors',
+              'whitespace-nowrap rounded-full px-4 py-2 font-display text-sm font-bold transition-all',
               activeTab === tab.id
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'border-[1.5px] border-ink bg-brand-400 text-foreground shadow-pop-sm'
+                : 'border-[1.5px] border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
             )}
           >
             {tab.label}
@@ -283,12 +284,12 @@ function OverviewTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
         {counts.map((c) => (
           <Card key={c.label}>
-            <CardContent className="py-5">
-              <div className="text-3xl font-bold">{c.value}</div>
-              <div className="text-sm text-muted-foreground">{c.label}</div>
+            <CardContent className="p-4 sm:py-5 sm:pl-6">
+              <div className="font-display text-3xl font-extrabold sm:text-4xl">{c.value}</div>
+              <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px]">{c.label}</div>
             </CardContent>
           </Card>
         ))}
@@ -443,7 +444,7 @@ function CurriculumTab({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Unit {unit.ordinal + 1}</span>
-                  <h3 className="text-lg font-semibold">{unit.title}</h3>
+                  <h3 className="text-lg font-semibold">{unitDisplayTitle(unit.title)}</h3>
                   <Badge variant="outline">{unit.classification}</Badge>
                 </div>
                 {unit.description && (
@@ -598,7 +599,7 @@ function LessonsTab({
               return (
                 <div key={unitId}>
                   <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {unit ? `Unit ${unit.ordinal + 1}: ${unit.title}` : 'General'}
+                    {unit ? `Unit ${unit.ordinal + 1}: ${unitDisplayTitle(unit.title)}` : 'General'}
                   </h4>
                   <ul className="space-y-1">
                     {visible.map((lesson) => (
