@@ -21,6 +21,7 @@
     "nim:probe": "tsx scripts/nim-probe.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
     "better-sqlite3": "^13.0.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
