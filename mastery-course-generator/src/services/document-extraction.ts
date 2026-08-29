@@ -6,7 +6,6 @@
  */
 import * as mammoth from 'mammoth';
 // rtf-parser doesn't have types; declare it
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const parseRtf = require('rtf-parser').parseRtf;
 
 export interface ExtractedDocument {

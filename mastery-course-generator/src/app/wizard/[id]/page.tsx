@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StepIndicator } from '@/components/wizard/StepIndicator';
+import { unitDisplayTitle } from '@/components/workspace/helpers';
 import { WizardStep } from '@/components/wizard/WizardStep';
 import { FileUpload, type PersistedSource } from '@/components/wizard/FileUpload';
 
@@ -485,11 +486,13 @@ export default function WizardPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? 'Failed to approve');
       }
-      // Sync the approved interpretation back into the main course fields.
+      // Fill course fields from the approved interpretation, but never
+      // overwrite something the user already typed in Course Info.
+      const hasCustomTitle = title.trim() !== '' && title.trim() !== 'Untitled Course';
       await saveCourse({
-        ...(editTitle ? { title: editTitle } : {}),
-        ...(editSubject ? { subjectDomain: editSubject } : {}),
-        ...(editLevel ? { targetLevel: editLevel } : {}),
+        ...(editTitle && !hasCustomTitle ? { title: editTitle } : {}),
+        ...(editSubject && !subjectDomain.trim() ? { subjectDomain: editSubject } : {}),
+        ...(editLevel && !targetLevel.trim() ? { targetLevel: editLevel } : {}),
       });
       await fetchKnowledgePackage();
       markCompleted('understanding');
@@ -1096,7 +1099,7 @@ function BlueprintReview(props: { workspace: WorkspaceData }) {
             <Card key={u.id}>
               <CardHeader>
                 <CardTitle className="text-base">
-                  Unit {u.ordinal + 1}: {u.title}
+                  Unit {u.ordinal + 1}: {unitDisplayTitle(u.title)}
                 </CardTitle>
                 {u.description && (
                   <CardDescription>{u.description}</CardDescription>

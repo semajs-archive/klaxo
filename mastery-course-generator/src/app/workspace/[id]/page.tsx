@@ -37,6 +37,7 @@ import {
   masteryVariant,
   recommendationLabel,
   relativeDays,
+  unitDisplayTitle,
 } from '@/components/workspace/helpers';
 
 type TabId =
@@ -443,7 +444,7 @@ function CurriculumTab({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Unit {unit.ordinal + 1}</span>
-                  <h3 className="text-lg font-semibold">{unit.title}</h3>
+                  <h3 className="text-lg font-semibold">{unitDisplayTitle(unit.title)}</h3>
                   <Badge variant="outline">{unit.classification}</Badge>
                 </div>
                 {unit.description && (
@@ -598,7 +599,7 @@ function LessonsTab({
               return (
                 <div key={unitId}>
                   <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {unit ? `Unit ${unit.ordinal + 1}: ${unit.title}` : 'General'}
+                    {unit ? `Unit ${unit.ordinal + 1}: ${unitDisplayTitle(unit.title)}` : 'General'}
                   </h4>
                   <ul className="space-y-1">
                     {visible.map((lesson) => (

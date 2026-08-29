@@ -12,10 +12,10 @@ import { toAppError } from '@/lib/errors';
 
 const CreateCourseSchema = z.object({
   title: z.string().min(1).max(200),
-  description: z.string().max(5000).optional(),
-  subjectDomain: z.string().optional(),
-  targetLevel: z.string().optional(),
-  preferences: z.record(z.string(), z.unknown()).optional(),
+  description: z.string().max(5000).nullish(),
+  subjectDomain: z.string().nullish(),
+  targetLevel: z.string().nullish(),
+  preferences: z.record(z.string(), z.unknown()).nullish(),
 });
 
 /**
@@ -57,9 +57,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       id: courseId,
       userId,
       title: parsed.data.title,
-      description: parsed.data.description,
-      subjectDomain: parsed.data.subjectDomain,
-      targetLevel: parsed.data.targetLevel,
+      description: parsed.data.description ?? undefined,
+      subjectDomain: parsed.data.subjectDomain ?? undefined,
+      targetLevel: parsed.data.targetLevel ?? undefined,
       preferences: parsed.data.preferences ? JSON.stringify(parsed.data.preferences) : undefined,
     });
 
