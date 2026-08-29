@@ -112,7 +112,36 @@ export class MockProvider implements AIProvider {
    * Return deterministic mock JSON/text based on what pipeline stage is asking.
    */
   private mockContent(request: CompletionRequest): string {
+    // Check for images in messages for vision mock
+    const hasImages = request.messages.some(m => m.images && m.images.length > 0);
+    
     const prompt = request.messages.map((m) => m.content).join('\n').toLowerCase();
+
+    // Vision mock for image analysis (source extraction with images)
+    if (hasImages && prompt.includes('source analyst')) {
+      return JSON.stringify({
+        title: 'Sample Course: Visual Content Analysis',
+        subject: 'general',
+        level: 'introductory',
+        summary: 'Course extracted from visual source material (mock vision).',
+        units: [
+          { title: 'Unit 1: Visual Foundations', ordinal: 0, description: 'Content from images.', classification: 'REQUIRED', objectiveIds: [] },
+          { title: 'Unit 2: Visual Application', ordinal: 1, description: 'Applying visual knowledge.', classification: 'REQUIRED', objectiveIds: [] },
+        ],
+        objectives: [
+          { statement: 'Interpret visual information accurately.', category: 'knowledge', difficulty: 2, importance: 3, classification: 'REQUIRED', sourceFragmentIds: [] },
+          { statement: 'Apply visual concepts to novel situations.', category: 'skill', difficulty: 3, importance: 4, classification: 'REQUIRED', sourceFragmentIds: [] },
+        ],
+        terminology: [
+          { term: 'diagram', definition: 'A visual representation', domain: 'general' },
+          { term: 'chart', definition: 'A graphical display of data', domain: 'general' },
+        ],
+        requirements: [],
+        prerequisites: [],
+        ambiguities: [],
+        confidence: 0.9,
+      });
+    }
 
     // Source extraction mock (distinctive system prompt: "source analyst").
     if (prompt.includes('source analyst')) {

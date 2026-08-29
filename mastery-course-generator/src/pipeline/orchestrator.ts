@@ -16,8 +16,10 @@ import {
   createGenerationJob,
   updateGenerationJob,
   createGenerationEvent,
+  getLesson,
+  listObjectives,
+  listUnits,
 } from '../db/repo';
-import { listObjectives, listUnits } from '../db/repo';
 import { analyzeSources } from '../services/source-analysis';
 import {
   generateBlueprint,
@@ -329,6 +331,129 @@ function reconstructBlueprint(courseId: string): CurriculumBlueprint {
 }
 
 /**
+ * Execute a REGENERATE_LESSON job.
+ */
+export async function executeRegenerateLessonJob(jobId: string, courseId: string, lessonId: string): Promise<void> {
+  await setState(jobId, 'GENERATING', 'lesson_regeneration', 0.1, 'Regenerating lesson…');
+  await emit(jobId, courseId, 'lesson_regeneration', 'Regenerating lesson…', 0);
+
+  try {
+    const lesson = getLesson(lessonId);
+    if (!lesson) throw pipelineFailed(`Lesson ${lessonId} not found`);
+    if (lesson.courseId !== courseId) throw pipelineFailed(`Lesson ${lessonId} does not belong to this course`);
+
+    const objectiveIds = JSON.parse(lesson.objectiveIds ?? '[]') as string[];
+    if (objectiveIds.length === 0) throw pipelineFailed('Lesson has no associated objectives');
+
+    await setState(jobId, 'GENERATING', 'lesson_regeneration', 0.5, 'Generating new lesson content…');
+    await emit(jobId, courseId, 'lesson_regeneration', 'Generating new lesson content…', 1);
+
+    const lessonContent = await generateLesson(courseId, lesson.unitId, objectiveIds, lesson.topicId ?? undefined, lesson.ordinal);
+    persistLesson(courseId, lesson.unitId, lesson.topicId ?? undefined, lesson.ordinal, objectiveIds, lessonContent);
+
+    await setState(jobId, 'COMPLETED', 'lesson_regeneration', 1.0, 'Lesson regenerated.');
+    updateGenerationJob(jobId, {
+      state: 'COMPLETED',
+      stage: 'lesson_regeneration',
+      progress: 1,
+      finishedAt: Date.now(),
+      result: JSON.stringify({ lessonId }),
+    });
+    await emit(jobId, courseId, 'lesson_regeneration', 'Lesson regenerated.', 2);
+  } catch (err) {
+    await setState(jobId, 'FAILED', 'lesson_regeneration', 0, `Lesson regeneration failed: ${(err as Error).message}`);
+    updateGenerationJob(jobId, {
+      state: 'FAILED',
+      finishedAt: Date.now(),
+      error: (err as Error).message,
+    });
+    throw pipelineFailed(`Lesson regeneration failed: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Execute a QA job.
+ */
+export async function executeQaJob(jobId: string, courseId: string): Promise<void> {
+  await setState(jobId, 'VALIDATING', 'qa', 0.1, 'Running QA checks…');
+  await emit(jobId, courseId, 'qa', 'Running QA checks…', 0);
+
+  try {
+    await setState(jobId, 'VALIDATING', 'qa', 0.5, 'Running deterministic checks…');
+    await emit(jobId, courseId, 'qa', 'Running deterministic checks…', 1);
+
+    const qa = await runQa(courseId, jobId, 1);
+
+    await setState(jobId, 'COMPLETED', 'qa', 1.0, 'QA completed.');
+    updateGenerationJob(jobId, {
+      state: 'COMPLETED',
+      stage: 'qa',
+      progress: 1,
+      finishedAt: Date.now(),
+      result: JSON.stringify(qa),
+    });
+    await emit(jobId, courseId, 'qa', `QA completed: ${qa.totalChecks} checks, ${qa.failedChecks} failed.`, 2);
+  } catch (err) {
+    await setState(jobId, 'FAILED', 'qa', 0, `QA failed: ${(err as Error).message}`);
+    updateGenerationJob(jobId, {
+      state: 'FAILED',
+      finishedAt: Date.now(),
+      error: (err as Error).message,
+    });
+    throw pipelineFailed(`QA failed: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Execute a REVISE job (targeted revision based on QA failures).
+ */
+export async function executeReviseJob(jobId: string, courseId: string, runNumber = 1): Promise<void> {
+  await setState(jobId, 'REVISING', 'revision', 0.1, 'Running targeted revisions…');
+  await emit(jobId, courseId, 'revision', 'Running targeted revisions…', 0);
+
+  try {
+    // Get the latest QA results to find auto-fixable failures
+    const qa = await runQa(courseId, jobId, runNumber);
+
+    if (qa.autoFixable === 0) {
+      await setState(jobId, 'COMPLETED', 'revision', 1.0, 'No auto-fixable issues found.');
+      updateGenerationJob(jobId, {
+        state: 'COMPLETED',
+        stage: 'revision',
+        progress: 1,
+        finishedAt: Date.now(),
+        result: JSON.stringify({ message: 'No auto-fixable issues found' }),
+      });
+      await emit(jobId, courseId, 'revision', 'No auto-fixable issues found.', 1);
+      return;
+    }
+
+    await setState(jobId, 'REVISING', 'revision', 0.5, `Fixing ${qa.autoFixable} auto-fixable issue(s)…`);
+    await emit(jobId, courseId, 'revision', `Fixing ${qa.autoFixable} auto-fixable issue(s)…`, 1);
+
+    const repair = await repairQaFailures(courseId, qa.autoFixableChecks);
+
+    await setState(jobId, 'COMPLETED', 'revision', 1.0, 'Revision completed.');
+    updateGenerationJob(jobId, {
+      state: 'COMPLETED',
+      stage: 'revision',
+      progress: 1,
+      finishedAt: Date.now(),
+      result: JSON.stringify(repair),
+    });
+    await emit(jobId, courseId, 'revision', `Repaired ${repair.repaired} issue(s), skipped ${repair.skipped}.`, 2);
+  } catch (err) {
+    await setState(jobId, 'FAILED', 'revision', 0, `Revision failed: ${(err as Error).message}`);
+    updateGenerationJob(jobId, {
+      state: 'FAILED',
+      finishedAt: Date.now(),
+      error: (err as Error).message,
+    });
+    throw pipelineFailed(`Revision failed: ${(err as Error).message}`);
+  }
+}
+
+/**
  * Generic dispatcher: run a job by its kind.
  */
 export async function runJob(jobId: string): Promise<void> {
@@ -360,6 +485,20 @@ export async function runJob(jobId: string): Promise<void> {
     case 'GENERATE_COURSE':
       await executeGenerateCourseJob(jobId, job.courseId);
       break;
+    case 'REGENERATE_LESSON': {
+      const lessonId = input.lessonId;
+      if (!lessonId) throw pipelineFailed('REGENERATE_LESSON job requires lessonId in input');
+      await executeRegenerateLessonJob(jobId, job.courseId, lessonId);
+      break;
+    }
+    case 'QA':
+      await executeQaJob(jobId, job.courseId);
+      break;
+    case 'REVISE': {
+      const runNumber = input.runNumber ?? 1;
+      await executeReviseJob(jobId, job.courseId, runNumber);
+      break;
+    }
     default:
       throw pipelineFailed(`Unsupported job kind: ${job.kind}`);
   }

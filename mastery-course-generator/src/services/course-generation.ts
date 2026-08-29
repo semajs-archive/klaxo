@@ -24,6 +24,8 @@ import {
   PracticeSetSchema,
   Assessment,
   AssessmentSchema,
+  DetectedObjective,
+  SourceAnalysis,
 } from '../ai/types';
 import {
   BLUEPRINT_SYSTEM,
@@ -43,9 +45,12 @@ import {
   createAssessment,
   createQuestion,
   createProvenance,
+  updateProvenance,
   getObjective,
+  listProvenance,
 } from '../db/repo';
 import { pipelineFailed } from '../lib/errors';
+import { contentHash } from '../lib/ids';
 
 /* ------------------------------------------------------------ blueprint ---- */
 
@@ -146,6 +151,38 @@ export async function persistBlueprint(courseId: string, blueprint: CurriculumBl
           relation: 'DERIVED_FROM',
           note: 'Derived from approved source interpretation.',
         });
+      }
+    }
+
+    // Update provenance records for this unit's objectives to link to source fragments.
+    // The source analysis created provenance with synthetic IDs (hashObjective).
+    // We need to map those to the actual database IDs we just created.
+    if (kp) {
+      const kpPayload = JSON.parse(kp.payload) as SourceAnalysis;
+      
+      // For each objective in this unit, find matching source analysis objective
+      // and update provenance entityId from synthetic to real ID.
+      for (const [o, obj] of unit.objectives.entries()) {
+        // Find matching source analysis objective by statement
+        const sourceObj = kpPayload.objectives.find(
+          (so: DetectedObjective) => so.statement === obj.statement
+        );
+        const code = obj.id ?? `U${u + 1}.O${o + 1}`;
+        if (sourceObj) {
+          const syntheticId = `obj_${contentHash(kpPayload.title, sourceObj.statement)}`;
+          const realId = objectiveIdMap.get(code)?.dbId;
+          
+          if (realId && syntheticId !== realId) {
+            // Update provenance records that reference the synthetic ID
+            const provenanceRecords = listProvenance(courseId);
+            for (const prov of provenanceRecords) {
+              if (prov.entityType === 'objective' && prov.entityId === syntheticId) {
+                // Update the existing provenance record to point to the real entity ID
+                updateProvenance(prov.id, { entityId: realId });
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -271,7 +308,7 @@ export function persistLesson(
   objectiveIds: string[],
   content: LessonContent,
 ) {
-  return createLesson({
+  const lesson = createLesson({
     id: `les_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
     courseId,
     unitId,
@@ -286,6 +323,20 @@ export function persistLesson(
     status: 'generated',
     origin: 'AI_GENERATED',
   });
+
+  // Create provenance linking lesson to its objectives
+  for (const objId of objectiveIds) {
+    createProvenance({
+      id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+      courseId,
+      entityType: 'lesson',
+      entityId: lesson.id,
+      relation: 'DERIVED_FROM',
+      note: `Lesson covering objective ${objId}`,
+    });
+  }
+
+  return lesson;
 }
 
 export function persistPracticeSet(
@@ -304,10 +355,22 @@ export function persistPracticeSet(
     origin: 'AI_GENERATED',
   });
 
+  // Create provenance linking practice set to its objective
+  if (objectiveId) {
+    createProvenance({
+      id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+      courseId,
+      entityType: 'practice_set',
+      entityId: ps.id,
+      relation: 'DERIVED_FROM',
+      note: `Practice set for objective ${objectiveId}`,
+    });
+  }
+
   let ordinal = 0;
   for (const q of set.questions) {
     const questionOrdinal = ordinal++;
-    createQuestion({
+    const question = createQuestion({
       id: `q_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
       courseId,
       objectiveId,
@@ -324,6 +387,18 @@ export function persistPracticeSet(
       difficulty: q.difficulty,
       origin: 'AI_GENERATED',
     });
+
+    // Create provenance linking question to its objective
+    if (objectiveId) {
+      createProvenance({
+        id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+        courseId,
+        entityType: 'question',
+        entityId: question.id,
+        relation: 'DERIVED_FROM',
+        note: `Practice question for objective ${objectiveId}`,
+      });
+    }
   }
 }
 
@@ -344,9 +419,21 @@ export function persistAssessment(
     origin: 'AI_GENERATED',
   });
 
+  // Create provenance linking assessment to its objectives
+  for (const objId of assessment.objectiveIds) {
+    createProvenance({
+      id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+      courseId,
+      entityType: 'assessment',
+      entityId: asm.id,
+      relation: 'DERIVED_FROM',
+      note: `Assessment covering objective ${objId}`,
+    });
+  }
+
   let ordinal = 0;
   for (const q of assessment.questions) {
-    createQuestion({
+    const question = createQuestion({
       id: `q_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
       courseId,
       assessmentId: asm.id,
@@ -362,5 +449,17 @@ export function persistAssessment(
       difficulty: q.difficulty,
       origin: 'AI_GENERATED',
     });
+
+    // Create provenance linking question to its objectives
+    for (const objId of assessment.objectiveIds) {
+      createProvenance({
+        id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+        courseId,
+        entityType: 'question',
+        entityId: question.id,
+        relation: 'DERIVED_FROM',
+        note: `Assessment question for objective ${objId}`,
+      });
+    }
   }
 }

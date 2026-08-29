@@ -27,7 +27,9 @@ import {
 import { contentHash } from '../lib/ids';
 import { aiUnavailable, pipelineFailed } from '../lib/errors';
 import { extractPdfText } from './pdf';
+import { extractDocument } from './document-extraction';
 import { readFileSync } from 'node:fs';
+import { Message } from '../ai/provider';
 
 export interface AnalyzeSourcesInput {
   courseId: string;
@@ -42,6 +44,9 @@ export interface SourceFragmentEvidence {
   page?: number;
   confidence?: number;
   uncertain: boolean;
+  // For image fragments: base64 encoded image data and MIME type
+  imageData?: string;
+  imageMimeType?: string;
 }
 
 export interface SourceAnalysisResult {
@@ -80,19 +85,65 @@ export async function extractDocumentFragments(
     // Persist page count + extracted text for provenance review.
     updateSourceDocument(documentId, { pageCount: extracted.pageCount });
   } else if (doc.kind === 'image') {
-    // Images carry no text fragments of their own; the vision model produces
-    // the interpretation. We record a single "image" fragment placeholder so
-    // provenance can point at the image source.
+    // Read the actual image bytes and encode as base64 for vision model
+    if (!doc.storagePath) {
+      throw pipelineFailed(`Image document ${documentId} has no storage path`);
+    }
+    const imageBuffer = readFileSync(doc.storagePath);
+    const mimeType = doc.mimeType ?? 'image/jpeg';
+    const base64Image = imageBuffer.toString('base64');
+    
+    // Store the image data in the fragment for vision model
     fragments.push({
       id: `frag_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
       documentId,
       kind: 'image',
-      text: '[Image source]',
+      text: `[Image: ${mimeType}]`,
       confidence: 1,
       uncertain: false,
+      imageData: base64Image,
+      imageMimeType: mimeType,
     });
+  } else if (doc.kind === 'document') {
+    // DOCX/RTF documents - use extracted text from ingestion
+    const raw = doc.extractedText ?? '';
+    if (!raw) {
+      // If no text was extracted during ingestion, try to extract now
+      if (doc.storagePath && doc.mimeType) {
+        try {
+          const buffer = readFileSync(doc.storagePath);
+          const extracted = await extractDocument(buffer, doc.mimeType);
+          // Update the document with extracted text
+          updateSourceDocument(documentId, { extractedText: extracted.text });
+          
+          // Create fragments from paragraphs with heading info
+          let ordinal = 0;
+          for (const para of extracted.paragraphs) {
+            fragments.push(segmentFragment(
+              documentId, courseId,
+              para.style ?? 'paragraph',
+              para.text,
+              undefined,
+              ordinal++
+            ));
+          }
+        } catch (err) {
+          throw pipelineFailed(`Failed to extract document ${documentId}: ${(err as Error).message}`);
+        }
+      } else {
+        throw pipelineFailed(`Document ${documentId} has no extracted text and no storage path`);
+      }
+    } else {
+      const paragraphs = raw
+        .split(/\n{2,}/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      paragraphs.forEach((text, i) => {
+        fragments.push(segmentFragment(documentId, courseId, 'paragraph', text, undefined, i));
+      });
+    }
   } else {
-    // Text / prompt / document fall back to the extracted text.
+    // Text / prompt fall back to the extracted text.
     const raw = doc.extractedText ?? '';
     const paragraphs = raw
       .split(/\n{2,}/)
@@ -206,15 +257,42 @@ export async function analyzeSources(input: AnalyzeSourcesInput): Promise<Source
 
   // 3. Assemble a combined source payload for the model. Include a per-fragment
   //    reference id so the model can cite sources in its interpretation.
-  const combinedText = allFragments
-    .map((f, i) => `[source-${i}] (${f.kind}${f.page ? `, page ${f.page}` : ''}):\n${f.text}`)
-    .join('\n\n');
-
+  // For vision model: include image data for image fragments
+  const hasImages = allFragments.some(f => f.kind === 'image' && f.imageData);
   const model = resolveModel(routing, 'source_extraction');
-  const messages = [
-    { role: 'system' as const, content: SOURCE_EXTRACTION_SYSTEM },
-    { role: 'user' as const, content: delimitSource(combinedText) },
+  
+  // Build messages with image support
+  const messages: Message[] = [
+    { role: 'system', content: SOURCE_EXTRACTION_SYSTEM },
   ];
+
+  if (hasImages) {
+    // Create a multimodal message with images
+    const combinedText = allFragments
+      .map((f, i) => `[source-${i}] (${f.kind}${f.page ? `, page ${f.page}` : ''}):\n${f.text}`)
+      .join('\n\n');
+    
+    // Collect image data for the message
+    const images = allFragments
+      .filter(f => f.kind === 'image' && f.imageData && f.imageMimeType)
+      .map(f => ({ data: f.imageData!, mimeType: f.imageMimeType! }));
+    
+    messages.push({
+      role: 'user',
+      content: delimitSource(combinedText),
+      images,
+    });
+  } else {
+    // Text-only message
+    const combinedText = allFragments
+      .map((f, i) => `[source-${i}] (${f.kind}${f.page ? `, page ${f.page}` : ''}):\n${f.text}`)
+      .join('\n\n');
+    
+    messages.push({
+      role: 'user',
+      content: delimitSource(combinedText),
+    });
+  }
 
   const result = await generateStructured(
     provider,

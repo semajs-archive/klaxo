@@ -9,10 +9,15 @@ import { z } from 'zod';
 /**
  * Standard message format for chat completions.
  */
+export const ImageContentSchema = z.object({
+  data: z.string(), // base64 encoded image data
+  mimeType: z.string(), // e.g., 'image/jpeg', 'image/png', 'image/webp'
+});
+
 export const MessageSchema = z.object({
   role: z.enum(['system', 'user', 'assistant']),
   content: z.string(),
-  images: z.array(z.string()).optional(), // base64 encoded images
+  images: z.array(ImageContentSchema).optional(),
 });
 
 export type Message = z.infer<typeof MessageSchema>;

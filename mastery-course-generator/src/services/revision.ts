@@ -6,7 +6,7 @@
  * *specific* repair action, and only that entity is regenerated — never the
  * whole course. Repairs are bounded and idempotent.
  */
-import { getObjective, listObjectives, listLessons, listUnits } from '../db/repo';
+import { getObjective, listObjectives, listLessons, listUnits, getLesson, updateLesson, getQuestion } from '../db/repo';
 import {
   generateLesson,
   generateAssessment,
@@ -62,6 +62,139 @@ async function repairOne(courseId: string, failure: QaFailure): Promise<RepairRe
       const lesson = await generateLesson(courseId, obj.unitId, [objectiveId], obj.topicId ?? undefined, 0);
       persistLesson(courseId, obj.unitId, obj.topicId ?? undefined, 0, [objectiveId], lesson);
       return { checkKey, entityType, entityId, repaired: true, note: `Generated missing lesson for objective "${obj.code ?? objectiveId}".` };
+    }
+
+    case 'duplicate_lessons': {
+      // Duplicate lesson titles → regenerate the duplicate with a more specific title
+      const lessonId = entityId;
+      if (!lessonId || entityType !== 'lesson') {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Missing lesson id.' };
+      }
+      const lesson = getLesson(lessonId);
+      if (!lesson) return { checkKey, entityType, entityId, repaired: false, note: 'Lesson not found.' };
+      
+      const objectiveIds = JSON.parse(lesson.objectiveIds ?? '[]') as string[];
+      if (objectiveIds.length === 0) {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Lesson has no objectives to regenerate from.' };
+      }
+      
+      // Generate a new lesson with the same objectives but it will get a unique title
+      const newLesson = await generateLesson(courseId, lesson.unitId, objectiveIds, lesson.topicId ?? undefined, lesson.ordinal);
+      // Update the existing lesson with new content
+      updateLesson(lessonId, {
+        content: JSON.stringify(newLesson),
+        title: newLesson.sections[0]?.title ?? lesson.title,
+        summary: newLesson.summary,
+        estimatedMinutes: newLesson.estimatedMinutes,
+        status: 'regenerated',
+        origin: 'AI_GENERATED',
+      });
+      return { checkKey, entityType, entityId, repaired: true, note: `Regenerated duplicate lesson "${lesson.title}" with unique content.` };
+    }
+
+    case 'invalid_equations': {
+      // Invalid LaTeX equations in lesson content → attempt to fix by regenerating the lesson
+      const lessonId = entityId;
+      if (!lessonId || entityType !== 'lesson') {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Missing lesson id.' };
+      }
+      const lesson = getLesson(lessonId);
+      if (!lesson || !lesson.content) return { checkKey, entityType, entityId, repaired: false, note: 'Lesson/content not found.' };
+      
+      const objectiveIds = JSON.parse(lesson.objectiveIds ?? '[]') as string[];
+      if (objectiveIds.length === 0) {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Lesson has no objectives to regenerate from.' };
+      }
+      
+      // Regenerate the lesson content
+      const newLesson = await generateLesson(courseId, lesson.unitId, objectiveIds, lesson.topicId ?? undefined, lesson.ordinal);
+      updateLesson(lessonId, {
+        content: JSON.stringify(newLesson),
+        title: newLesson.sections[0]?.title ?? lesson.title,
+        summary: newLesson.summary,
+        estimatedMinutes: newLesson.estimatedMinutes,
+        status: 'regenerated',
+        origin: 'AI_GENERATED',
+      });
+      return { checkKey, entityType, entityId, repaired: true, note: `Regenerated lesson "${lesson.title}" to fix invalid equations.` };
+    }
+
+    case 'missing_assessment_coverage': {
+      // Assessment missing coverage for some objectives
+      const objectiveId = entityId;
+      if (!objectiveId || entityType !== 'objective') {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Missing objective id.' };
+      }
+      const obj = getObjective(objectiveId);
+      if (!obj) return { checkKey, entityType, entityId, repaired: false, note: 'Objective not found.' };
+      const assessment = await generateAssessment(courseId, [objectiveId], 'formative');
+      persistAssessment(courseId, obj.unitId ?? undefined, assessment);
+      return { checkKey, entityType, entityId, repaired: true, note: `Generated assessment coverage for objective "${obj.code ?? objectiveId}".` };
+    }
+
+    case 'malformed_question_structure': {
+      // Malformed question (missing choices, answer key, etc.)
+      const questionId = entityId;
+      if (!questionId || entityType !== 'question') {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Missing question id.' };
+      }
+      const question = getQuestion(questionId);
+      if (!question) return { checkKey, entityType, entityId, repaired: false, note: 'Question not found.' };
+      
+      // For malformed questions, we can't easily auto-fix without knowing the intent
+      // Mark as requiring manual review
+      return { checkKey, entityType, entityId, repaired: false, note: 'Question structure issues require manual review.' };
+    }
+
+    case 'invalid_answer_key': {
+      // Invalid answer key in question
+      const questionId = entityId;
+      if (!questionId || entityType !== 'question') {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Missing question id.' };
+      }
+      const question = getQuestion(questionId);
+      if (!question) return { checkKey, entityType, entityId, repaired: false, note: 'Question not found.' };
+      
+      // Can't easily auto-fix answer keys without the correct answer
+      return { checkKey, entityType, entityId, repaired: false, note: 'Invalid answer key requires manual review.' };
+    }
+
+    case 'missing_mastery_criteria': {
+      // Objective missing mastery criteria
+      const objectiveId = entityId;
+      if (!objectiveId || entityType !== 'objective') {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Missing objective id.' };
+      }
+      const obj = getObjective(objectiveId);
+      if (!obj) return { checkKey, entityType, entityId, repaired: false, note: 'Objective not found.' };
+      
+      // Add basic mastery criteria (not implemented yet - would need updateObjective function)
+      // const masteryCriteria = JSON.stringify({
+      //   threshold: 0.8,
+      //   minEvidence: 3,
+      //   description: `Demonstrate proficiency in: ${obj.statement}`,
+      // });
+      return { checkKey, entityType, entityId, repaired: false, note: 'Mastery criteria update not implemented yet; skipped.' };
+    }
+
+    case 'classification_inconsistency': {
+      // Classification inconsistency
+      const objectiveId = entityId;
+      if (!objectiveId || entityType !== 'objective') {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Missing objective id.' };
+      }
+      // Classification inconsistencies need human judgment
+      return { checkKey, entityType, entityId, repaired: false, note: 'Classification inconsistency requires manual review.' };
+    }
+
+    case 'broken_prerequisite_relationship': {
+      // Broken prerequisite chain
+      const objectiveId = entityId;
+      if (!objectiveId || entityType !== 'objective') {
+        return { checkKey, entityType, entityId, repaired: false, note: 'Missing objective id.' };
+      }
+      // Prerequisite issues are complex; flag for manual review
+      return { checkKey, entityType, entityId, repaired: false, note: 'Prerequisite relationship issues require manual review.' };
     }
 
     default:

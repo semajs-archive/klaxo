@@ -875,6 +875,27 @@ export function deleteQuestionsByCourse(courseId: string) {
   return getDb().delete(questions).where(eq(questions.courseId, courseId)).run();
 }
 
+export function updateQuestion(id: string, data: Partial<{
+  ordinal: number;
+  kind: string;
+  level: string;
+  prompt: string;
+  choices: string;
+  answerKey: string;
+  explanation: string;
+  misconceptions: string;
+  expectedSkill: string;
+  difficulty: number;
+  origin: string;
+}>) {
+  return getDb()
+    .update(questions)
+    .set({ ...data, updatedAt: Date.now() })
+    .where(eq(questions.id, id))
+    .returning()
+    .get();
+}
+
 /* ------------------------------------------------------- masteryRecords ---- */
 
 export function createMasteryRecord(input: {
@@ -1029,6 +1050,22 @@ export function listProvenance(courseId: string) {
     .from(provenance)
     .where(eq(provenance.courseId, courseId))
     .all();
+}
+
+export function updateProvenance(id: string, data: Partial<{
+  entityId: string;
+  fragmentId: string;
+  documentId: string;
+  relation: string;
+  confidence: number;
+  note: string;
+}>) {
+  return getDb()
+    .update(provenance)
+    .set(data)
+    .where(eq(provenance.id, id))
+    .returning()
+    .get();
 }
 
 export function deleteProvenanceByCourse(courseId: string) {

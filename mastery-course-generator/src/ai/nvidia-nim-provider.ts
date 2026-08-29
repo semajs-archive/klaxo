@@ -311,7 +311,7 @@ function buildRequestBody(request: CompletionRequest): Record<string, unknown> {
         for (const img of m.images) {
           content.push({
             type: 'image_url',
-            image_url: { url: `data:image/jpeg;base64,${img}` },
+            image_url: { url: `data:${img.mimeType};base64,${img.data}` },
           });
         }
       }

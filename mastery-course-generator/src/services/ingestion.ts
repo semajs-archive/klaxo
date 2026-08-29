@@ -10,6 +10,7 @@ import { resolve, extname } from 'node:path';
 import { getEnv } from '../lib/env';
 import { badRequest } from '../lib/errors';
 import { createSourceDocument } from '../db/repo';
+import { extractDocument } from './document-extraction';
 
 /** Allowed MIME types by kind. */
 const ALLOWED_MIME = new Map<string, string[]>([
@@ -146,12 +147,27 @@ export async function ingestUpload(input: UploadInput): Promise<UploadResult> {
     : input.content.byteLength;
 
   let storagePath: string | null = null;
+  let extractedText: string | undefined;
+
   if (typeof input.content !== 'string') {
     // Write binary content to disk.
     mkdirSync(resolve(process.cwd(), env.UPLOAD_DIR), { recursive: true });
     const safeName = input.filename?.replace(/[^a-zA-Z0-9._-]/g, '_') ?? id;
     storagePath = resolve(process.cwd(), env.UPLOAD_DIR, `${id}_${safeName}`);
     writeFileSync(storagePath, input.content);
+
+    // Extract text from document files (DOCX, RTF, DOC)
+    if (input.kind === 'document' && input.mimeType) {
+      try {
+        const extracted = await extractDocument(input.content, input.mimeType);
+        extractedText = extracted.text;
+      } catch (err) {
+        // Don't fail the upload, but log the extraction error
+        console.warn(`Failed to extract text from document ${id}:`, err);
+      }
+    }
+  } else {
+    extractedText = input.content;
   }
 
   const doc = createSourceDocument({
@@ -163,7 +179,7 @@ export async function ingestUpload(input: UploadInput): Promise<UploadResult> {
     byteSize,
     storagePath: storagePath ?? undefined,
     checksum,
-    extractedText: typeof input.content === 'string' ? input.content : input.contentText ?? undefined,
+    extractedText: extractedText ?? input.contentText,
     status: 'uploaded',
   });
 

@@ -10,11 +10,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUserId } from '@/lib/auth';
 import { getCourse } from '@/db/repo';
-import { createGenerationJob, listGenerationJobs } from '@/db/repo';
-import { runJob } from '@/pipeline/orchestrator';
+import { listGenerationJobs } from '@/db/repo';
+import { runJob, startJob } from '@/pipeline/orchestrator';
 import { notFound, toAppError } from '@/lib/errors';
-
-import { randomUUID } from 'node:crypto';
 
 const StartJobSchema = z.object({
   kind: z.enum(['ANALYZE_SOURCE', 'BLUEPRINT', 'GENERATE_COURSE', 'REGENERATE_LESSON', 'QA', 'REVISE']),
@@ -47,23 +45,24 @@ export async function POST(
       );
     }
 
-    const jobId = `job_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
-    createGenerationJob({
-      id: jobId,
+    // Use idempotent job creation
+    const { jobId, created } = startJob({
       courseId: id,
       userId,
       kind: parsed.data.kind,
       requestKey: parsed.data.requestKey,
-      input: parsed.data.input ? JSON.stringify(parsed.data.input) : undefined,
+      input: parsed.data.input,
     });
 
-    // Fire-and-forget execution; the job runner updates progress.
-    runJob(jobId).catch((err) => {
-      // Error is already recorded in the job by runJob.
-      console.error('Job failed:', err);
-    });
+    if (created) {
+      // Fire-and-forget execution; the job runner updates progress.
+      runJob(jobId).catch((err) => {
+        // Error is already recorded in the job by runJob.
+        console.error('Job failed:', err);
+      });
+    }
 
-    return NextResponse.json({ jobId, created: true }, { status: 201 });
+    return NextResponse.json({ jobId, created }, { status: created ? 201 : 200 });
   } catch (err) {
     const appErr = toAppError(err);
     return NextResponse.json(
