@@ -13,6 +13,10 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    working-directory: mastery-course-generator
+
 jobs:
   typecheck:
     name: Typecheck
@@ -23,6 +27,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: mastery-course-generator/package-lock.json
       - run: npm ci
       - run: npm run typecheck
 
@@ -35,6 +40,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: mastery-course-generator/package-lock.json
       - run: npm ci
       - run: npm run lint
 
@@ -47,6 +53,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: mastery-course-generator/package-lock.json
       - run: npm ci
       - run: npm run test:unit
 
@@ -59,6 +66,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: mastery-course-generator/package-lock.json
       - run: npm ci
       - run: npm run test:integration
 
@@ -71,6 +79,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: mastery-course-generator/package-lock.json
       - run: npm ci
       - run: npm run build
 
