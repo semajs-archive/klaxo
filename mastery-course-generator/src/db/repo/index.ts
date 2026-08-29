@@ -5,7 +5,7 @@
  * Drizzle directly. Ownership checks (`userId`) are applied at the call site;
  * these helpers provide typed, predictable CRUD.
  */
-import { eq, desc, asc, and } from 'drizzle-orm';
+import { eq, desc, asc, and, inArray, lt } from 'drizzle-orm';
 import { getDb, schema } from '../index';
 
 const {
@@ -15,6 +15,7 @@ const {
   sourceDocuments,
   sourceFragments,
   knowledgePackages,
+  blueprints,
   units,
   topics,
   objectives,
@@ -275,6 +276,10 @@ export function listSourceFragmentsForDocument(documentId: string) {
     .all();
 }
 
+export function getSourceFragment(id: string) {
+  return getDb().select().from(sourceFragments).where(eq(sourceFragments.id, id)).get();
+}
+
 /* ---------------------------------------------------- knowledgePackages ---- */
 
 export function createKnowledgePackage(input: {
@@ -338,6 +343,58 @@ export function updateKnowledgePackage(id: string, data: Partial<{
     .where(eq(knowledgePackages.id, id))
     .returning()
     .get();
+}
+
+/* ----------------------------------------------------------- blueprints ---- */
+
+export function upsertBlueprint(input: {
+  id: string;
+  courseId: string;
+  payload: string;
+  knowledgePackageId?: string;
+  status?: string;
+}) {
+  const existing = getDb()
+    .select()
+    .from(blueprints)
+    .where(eq(blueprints.courseId, input.courseId))
+    .get();
+  if (existing) {
+    return getDb()
+      .update(blueprints)
+      .set({
+        payload: input.payload,
+        knowledgePackageId: input.knowledgePackageId ?? existing.knowledgePackageId,
+        status: input.status ?? existing.status,
+        updatedAt: Date.now(),
+      })
+      .where(eq(blueprints.id, existing.id))
+      .returning()
+      .get();
+  }
+  return getDb()
+    .insert(blueprints)
+    .values({
+      id: input.id,
+      courseId: input.courseId,
+      payload: input.payload,
+      knowledgePackageId: input.knowledgePackageId ?? null,
+      status: input.status ?? 'draft',
+    })
+    .returning()
+    .get();
+}
+
+export function getBlueprint(courseId: string) {
+  return getDb()
+    .select()
+    .from(blueprints)
+    .where(eq(blueprints.courseId, courseId))
+    .get();
+}
+
+export function deleteBlueprintByCourse(courseId: string) {
+  return getDb().delete(blueprints).where(eq(blueprints.courseId, courseId)).run();
 }
 
 /* --------------------------------------------------------------- units ---- */
@@ -1163,6 +1220,17 @@ export function listGenerationJobs(courseId: string) {
     .all();
 }
 
+/** List QUEUED jobs (oldest first) for the worker to pick up. */
+export function listQueuedJobs(limit = 10) {
+  return getDb()
+    .select()
+    .from(generationJobs)
+    .where(eq(generationJobs.state, 'QUEUED'))
+    .orderBy(asc(generationJobs.createdAt))
+    .limit(limit)
+    .all();
+}
+
 export function updateGenerationJob(id: string, data: Partial<{
   state: string;
   stage: string;
@@ -1178,6 +1246,44 @@ export function updateGenerationJob(id: string, data: Partial<{
   return getDb()
     .update(generationJobs)
     .set({ ...data, updatedAt: Date.now() })
+    .where(eq(generationJobs.id, id))
+    .returning()
+    .get();
+}
+
+/** List jobs in a given set of states, stale since `beforeMs` (for recovery). */
+export function listAbandonedJobs(beforeMs: number, states: string[]) {
+  if (states.length === 0) return [];
+  return getDb()
+    .select()
+    .from(generationJobs)
+    .where(
+      and(
+        lt(generationJobs.updatedAt, beforeMs),
+        inArray(generationJobs.state, states),
+      ),
+    )
+    .all();
+}
+
+/** Mark a job as cancelled if it is not already in a terminal state. */
+export function cancelGenerationJob(id: string) {
+  const job = getDb().select().from(generationJobs).where(eq(generationJobs.id, id)).get();
+  if (!job) return null;
+  if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.state)) return job;
+  return getDb()
+    .update(generationJobs)
+    .set({ state: 'CANCELLED', cancelRequested: 1, finishedAt: Date.now(), updatedAt: Date.now() })
+    .where(eq(generationJobs.id, id))
+    .returning()
+    .get();
+}
+
+/** Atomically claim a QUEUED job for execution (prevents double execution). */
+export function claimQueuedJob(id: string) {
+  return getDb()
+    .update(generationJobs)
+    .set({ startedAt: Date.now(), attempts: 1 + 0, updatedAt: Date.now() })
     .where(eq(generationJobs.id, id))
     .returning()
     .get();
@@ -1265,6 +1371,21 @@ export function listUserEdits(courseId: string) {
     .select()
     .from(userEdits)
     .where(eq(userEdits.courseId, courseId))
+    .orderBy(desc(userEdits.createdAt))
+    .all();
+}
+
+export function getUserEditsForEntity(courseId: string, entityType: string, entityId: string) {
+  return getDb()
+    .select()
+    .from(userEdits)
+    .where(
+      and(
+        eq(userEdits.courseId, courseId),
+        eq(userEdits.entityType, entityType),
+        eq(userEdits.entityId, entityId),
+      ),
+    )
     .orderBy(desc(userEdits.createdAt))
     .all();
 }

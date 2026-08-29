@@ -102,10 +102,11 @@ KLAXO is a curriculum engineering platform that takes messy educational inputs (
 |-------|------------|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | Backend | Next.js API Routes, TypeScript |
-| Database | SQLite via `better-sqlite3` + Drizzle ORM |
+| Database | SQLite via `better-sqlite3` + Drizzle ORM (dev) / PostgreSQL (production) |
 | AI | NVIDIA NIM models via FCC Server (OpenAI-compatible API) |
 | Schema Validation | Zod |
 | Testing | Vitest |
+| CI/CD | GitHub Actions |
 
 ---
 
@@ -122,6 +123,46 @@ KLAXO is a curriculum engineering platform that takes messy educational inputs (
 git clone <repo-url>
 cd mastery-course-generator
 npm install
+```
+
+### Database
+
+- **Development**: SQLite file (`./data/mastery.db`) — auto-created.
+- **Production**: Set `DATABASE_URL` to a PostgreSQL connection string. Run migrations with `npm run db:migrate` (uses Drizzle).
+
+### Durable Job Worker
+
+Long-running generation jobs run in a separate process so they survive request termination.
+
+```bash
+# Development (in a separate terminal)
+npm run worker
+
+# Production: run as a managed service alongside the web tier
+```
+
+---
+
+## Running the Application
+
+### Development Mode (with mock AI)
+
+```bash
+npm run dev
+# In another terminal (optional, for durable jobs)
+npm run worker
+```
+
+Open `http://localhost:3000`. The app uses deterministic mock AI fixtures — no network calls, no API keys needed.
+
+### Production Mode (real NVIDIA NIM)
+
+```bash
+# Set AI_DEV_MODE=false and provide valid FCC_SERVER_API_KEY in .env
+npm run build
+npm run start
+# Run the worker as a separate process
+npm run worker
 ```
 
 ### Environment Configuration

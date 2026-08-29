@@ -13,6 +13,7 @@ import { getCourse } from '@/db/repo';
 import { listGenerationJobs } from '@/db/repo';
 import { runJob, startJob } from '@/pipeline/orchestrator';
 import { notFound, toAppError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
 
 const StartJobSchema = z.object({
   kind: z.enum(['ANALYZE_SOURCE', 'BLUEPRINT', 'GENERATE_COURSE', 'REGENERATE_LESSON', 'QA', 'REVISE']),
@@ -55,10 +56,14 @@ export async function POST(
     });
 
     if (created) {
-      // Fire-and-forget execution; the job runner updates progress.
+      // Durable execution: the dedicated worker (`npm run worker`) is the
+      // production-grade executor. For single-process dev without the worker,
+      // kick the job off in-process as a best-effort fallback. The job's state
+      // is persisted in the DB, so a request dying mid-flight never loses work —
+      // the worker (or a later recovery pass) resumes it.
       runJob(jobId).catch((err) => {
-        // Error is already recorded in the job by runJob.
-        console.error('Job failed:', err);
+        // Error is already recorded on the job by runJob; log via structured logger.
+        logger.error('In-process job execution failed', { jobId, error: (err as Error).message });
       });
     }
 

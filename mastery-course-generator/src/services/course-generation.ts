@@ -24,8 +24,6 @@ import {
   PracticeSetSchema,
   Assessment,
   AssessmentSchema,
-  DetectedObjective,
-  SourceAnalysis,
 } from '../ai/types';
 import {
   BLUEPRINT_SYSTEM,
@@ -45,12 +43,12 @@ import {
   createAssessment,
   createQuestion,
   createProvenance,
-  updateProvenance,
   getObjective,
-  listProvenance,
+  getSourceFragment,
+  upsertBlueprint,
+  getBlueprint,
 } from '../db/repo';
 import { pipelineFailed } from '../lib/errors';
-import { contentHash } from '../lib/ids';
 
 /* ------------------------------------------------------------ blueprint ---- */
 
@@ -85,12 +83,27 @@ export async function generateBlueprint(courseId: string): Promise<CurriculumBlu
 /**
  * Persist the blueprint as normalized entities (units, topics, objectives,
  * dependencies) with provenance links back to the knowledge package.
+ *
+ * Creates provenance records with REAL database entity IDs and source fragment IDs
+ * from the approved knowledge package.
  */
 export async function persistBlueprint(courseId: string, blueprint: CurriculumBlueprint): Promise<void> {
   const kp = getLatestKnowledgePackage(courseId);
 
   const unitIdMap = new Map<number, string>();
   const objectiveIdMap = new Map<string, { dbId: string; ordinal: number }>();
+  const objectiveFragmentMap = new Map<string, string[]>(); // statement -> fragmentIds
+
+  // Load fragment references from knowledge package if available.
+  if (kp) {
+    const kpPayload = JSON.parse(kp.payload);
+    for (const obj of kpPayload.objectives ?? []) {
+      const fragmentIds = obj.sourceFragmentIds ?? [];
+      if (fragmentIds.length > 0 && fragmentIds[0] !== 'INFERRED_FROM_SOURCE_SET') {
+        objectiveFragmentMap.set(obj.statement, fragmentIds);
+      }
+    }
+  }
 
   // Units + topics.
   for (const [u, unit] of blueprint.units.entries()) {
@@ -108,9 +121,22 @@ export async function persistBlueprint(courseId: string, blueprint: CurriculumBl
       origin: 'AI_GENERATED',
     });
 
+    // Provenance for unit
+    if (kp) {
+      createProvenance({
+        id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+        courseId,
+        entityType: 'unit',
+        entityId: unitId,
+        relation: 'DERIVED_FROM',
+        note: `Unit from approved knowledge package: ${kp.id}`,
+      });
+    }
+
     for (const [t, topic] of unit.topics.entries()) {
+      const topicId = `topic_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
       createTopic({
-        id: `topic_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+        id: topicId,
         courseId,
         unitId,
         ordinal: t,
@@ -119,6 +145,18 @@ export async function persistBlueprint(courseId: string, blueprint: CurriculumBl
         classification: topic.classification,
         origin: 'AI_GENERATED',
       });
+
+      // Provenance for topic
+      if (kp) {
+        createProvenance({
+          id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+          courseId,
+          entityType: 'topic',
+          entityId: topicId,
+          relation: 'DERIVED_FROM',
+          note: `Topic from approved knowledge package: ${kp.id}`,
+        });
+      }
     }
 
     // Objectives.
@@ -141,47 +179,40 @@ export async function persistBlueprint(courseId: string, blueprint: CurriculumBl
       });
       objectiveIdMap.set(code, { dbId: objectiveId, ordinal: o });
 
-      // Provenance from knowledge package.
+      // Create provenance for objective with REAL database ID and fragment references
       if (kp) {
-        createProvenance({
-          id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
-          courseId,
-          entityType: 'objective',
-          entityId: objectiveId,
-          relation: 'DERIVED_FROM',
-          note: 'Derived from approved source interpretation.',
-        });
-      }
-    }
-
-    // Update provenance records for this unit's objectives to link to source fragments.
-    // The source analysis created provenance with synthetic IDs (hashObjective).
-    // We need to map those to the actual database IDs we just created.
-    if (kp) {
-      const kpPayload = JSON.parse(kp.payload) as SourceAnalysis;
-      
-      // For each objective in this unit, find matching source analysis objective
-      // and update provenance entityId from synthetic to real ID.
-      for (const [o, obj] of unit.objectives.entries()) {
-        // Find matching source analysis objective by statement
-        const sourceObj = kpPayload.objectives.find(
-          (so: DetectedObjective) => so.statement === obj.statement
-        );
-        const code = obj.id ?? `U${u + 1}.O${o + 1}`;
-        if (sourceObj) {
-          const syntheticId = `obj_${contentHash(kpPayload.title, sourceObj.statement)}`;
-          const realId = objectiveIdMap.get(code)?.dbId;
-          
-          if (realId && syntheticId !== realId) {
-            // Update provenance records that reference the synthetic ID
-            const provenanceRecords = listProvenance(courseId);
-            for (const prov of provenanceRecords) {
-              if (prov.entityType === 'objective' && prov.entityId === syntheticId) {
-                // Update the existing provenance record to point to the real entity ID
-                updateProvenance(prov.id, { entityId: realId });
-              }
+        // Get fragment IDs for this objective statement
+        const fragmentIds = objectiveFragmentMap.get(obj.statement) ?? [];
+        
+        if (fragmentIds.length > 0) {
+          // Create provenance linking to each source fragment
+          for (const fragmentId of fragmentIds) {
+            const frag = getSourceFragment(fragmentId);
+            if (frag) {
+              createProvenance({
+                id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+                courseId,
+                entityType: 'objective',
+                entityId: objectiveId,
+                fragmentId: frag.id,
+                documentId: frag.documentId,
+                relation: 'DERIVED_FROM',
+                confidence: kp.confidence ?? undefined,
+                note: obj.statement,
+              });
             }
           }
+        } else {
+          // No specific fragment — inferred from source set
+          createProvenance({
+            id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+            courseId,
+            entityType: 'objective',
+            entityId: objectiveId,
+            relation: 'INFERRED_FROM_SOURCE_SET',
+            confidence: kp.confidence ?? undefined,
+            note: obj.statement,
+          });
         }
       }
     }
@@ -201,6 +232,30 @@ export async function persistBlueprint(courseId: string, blueprint: CurriculumBl
         rationale: edge.rationale,
       });
     }
+  }
+
+  // Persist the canonical blueprint snapshot. This is the authoritative recovery
+  // source — generation never reconstructs an approximation from entities.
+  upsertBlueprint({
+    id: `bp_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+    courseId,
+    payload: JSON.stringify(blueprint),
+    knowledgePackageId: kp?.id ?? undefined,
+    status: 'approved',
+  });
+}
+
+/**
+ * Load the canonical persisted blueprint. Returns null only if never persisted.
+ * Generation should use this instead of reconstructing from entities.
+ */
+export function loadPersistedBlueprint(courseId: string): CurriculumBlueprint | null {
+  const record = getBlueprint(courseId);
+  if (!record) return null;
+  try {
+    return JSON.parse(record.payload) as CurriculumBlueprint;
+  } catch {
+    return null;
   }
 }
 
@@ -308,6 +363,18 @@ export function persistLesson(
   objectiveIds: string[],
   content: LessonContent,
 ) {
+  // Determine classification from objectives (most severe wins: ENRICHMENT > RECOMMENDED > PREREQUISITE > REQUIRED)
+  let classification = 'REQUIRED';
+  if (objectiveIds.length > 0) {
+    const classifications = objectiveIds
+      .map((id) => getObjective(id)?.classification)
+      .filter((c): c is string => Boolean(c));
+    if (classifications.includes('ENRICHMENT')) classification = 'ENRICHMENT';
+    else if (classifications.includes('RECOMMENDED')) classification = 'RECOMMENDED';
+    else if (classifications.includes('PREREQUISITE')) classification = 'PREREQUISITE';
+    else classification = 'REQUIRED';
+  }
+
   const lesson = createLesson({
     id: `les_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
     courseId,
@@ -319,7 +386,7 @@ export function persistLesson(
     objectiveIds: JSON.stringify(objectiveIds),
     content: JSON.stringify(content),
     estimatedMinutes: content.estimatedMinutes,
-    classification: 'REQUIRED',
+    classification,
     status: 'generated',
     origin: 'AI_GENERATED',
   });

@@ -19,11 +19,15 @@ import {
   getLesson,
   listObjectives,
   listUnits,
+  listAbandonedJobs,
+  cancelGenerationJob,
+  getUserEditsForEntity,
 } from '../db/repo';
 import { analyzeSources } from '../services/source-analysis';
 import {
   generateBlueprint,
   persistBlueprint,
+  loadPersistedBlueprint,
   generateLesson,
   generatePractice,
   generateAssessment,
@@ -33,7 +37,7 @@ import {
 } from '../services/course-generation';
 import { runQa } from '../services/qa';
 import { repairQaFailures } from '../services/revision';
-import { JobKind, JobState, CurriculumBlueprint } from '../ai/types';
+import { JobKind, JobState, CurriculumBlueprint, LessonContent } from '../ai/types';
 import { pipelineFailed } from '../lib/errors';
 
 /* --------------------------------------------------------------- types ---- */
@@ -192,11 +196,10 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
     const existingUnits = listUnits(courseId);
     let blueprint: CurriculumBlueprint;
     if (existingUnits.length > 0) {
-      // Blueprint already persisted; reconstruct approximate blueprint.
-      blueprint = reconstructBlueprint(courseId);
+      // Blueprint already persisted; load the canonical snapshot.
+      blueprint = loadPersistedBlueprint(courseId) ?? (await generateAndPersist(courseId));
     } else {
-      blueprint = await generateBlueprint(courseId);
-      await persistBlueprint(courseId, blueprint);
+      blueprint = await generateAndPersist(courseId);
     }
     await emit(jobId, courseId, 'blueprint', 'Building prerequisite graph…', ordinal++);
 
@@ -210,6 +213,7 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
     await setState(jobId, 'GENERATING', 'lessons', 0.15, 'Generating lessons…');
 
     for (const unit of units) {
+      checkCancelled(jobId);
       const unitObjectives = objectives.filter((o) => o.unitId === unit.id);
       if (unitObjectives.length === 0) continue;
 
@@ -217,6 +221,7 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
 
       // One lesson per objective (simplified: group objectives per lesson).
       for (const obj of unitObjectives) {
+        checkCancelled(jobId);
         const lessonContent = await generateLesson(courseId, unit.id, [obj.id], undefined, unitObjectives.indexOf(obj));
         persistLesson(courseId, unit.id, undefined, unitObjectives.indexOf(obj), [obj.id], lessonContent);
         doneObjectives++;
@@ -233,6 +238,7 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
 
     let donePractice = 0;
     for (const obj of objectives) {
+      checkCancelled(jobId);
       const practice = await generatePractice(courseId, obj.id);
       persistPracticeSet(courseId, obj.id, undefined, practice);
       donePractice++;
@@ -255,6 +261,7 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
     const MAX_REVISION_PASSES = 3;
 
     while (qa.autoFixable > 0 && revisionPass < MAX_REVISION_PASSES) {
+      checkCancelled(jobId);
       revisionPass++;
       await setState(jobId, 'REVISING', 'revision', 0.9 + 0.08 * revisionPass, `Fixing ${qa.autoFixable} issue(s)… (pass ${revisionPass})`);
       await emit(jobId, courseId, 'revision', `QA found ${qa.autoFixable} auto-fixable issue(s). Repairing (pass ${revisionPass})…`, ordinal++);
@@ -274,16 +281,41 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
       await emit(jobId, courseId, 'revision', `Revision bound reached; ${qa.autoFixable} issue(s) remain (may need manual review).`, ordinal++, 'warn');
     }
 
-    // 6. Done.
-    await setState(jobId, 'COMPLETED', 'complete', 1.0, 'Course ready.');
-    updateGenerationJob(jobId, {
-      state: 'COMPLETED',
-      stage: 'complete',
-      progress: 1,
-      finishedAt: Date.now(),
-      result: JSON.stringify({ qa, blueprint }),
-    });
-    await emit(jobId, courseId, 'complete', 'Course ready.', ordinal++);
+    // Final verdict determines if the job is COMPLETED or FAILED.
+    if (qa.verdict === 'FAILED') {
+      await setState(jobId, 'FAILED', 'qa', 1.0, `QA verdict: ${qa.verdict} (${qa.blockingFailures} blocking failures).`);
+      updateGenerationJob(jobId, {
+        state: 'FAILED',
+        stage: 'qa',
+        progress: 1,
+        finishedAt: Date.now(),
+        error: `QA verdict: ${qa.verdict} (${qa.blockingFailures} blocking failures, ${qa.warnings} warnings).`,
+      });
+      await emit(jobId, courseId, 'qa', `QA verdict: ${qa.verdict}. Publishing blocked.`, ordinal++, 'error');
+      throw pipelineFailed(`QA verdict: ${qa.verdict}.`);
+    } else if (qa.verdict === 'REQUIRES_MANUAL_REVIEW') {
+      // Still COMPLETED but flagged for manual review
+      await setState(jobId, 'COMPLETED', 'qa', 1.0, `QA verdict: ${qa.verdict} — review required before publishing.`);
+      updateGenerationJob(jobId, {
+        state: 'COMPLETED',
+        stage: 'qa',
+        progress: 1,
+        finishedAt: Date.now(),
+        result: JSON.stringify({ qa, blueprint, verdict: qa.verdict }),
+      });
+      await emit(jobId, courseId, 'qa', `QA verdict: ${qa.verdict}. Manual review recommended.`, ordinal++, 'warn');
+    } else {
+      // PASSED or PASSED_WITH_WARNINGS
+      await setState(jobId, 'COMPLETED', 'complete', 1.0, 'Course ready.');
+      updateGenerationJob(jobId, {
+        state: 'COMPLETED',
+        stage: 'complete',
+        progress: 1,
+        finishedAt: Date.now(),
+        result: JSON.stringify({ qa, blueprint, verdict: qa.verdict }),
+      });
+      await emit(jobId, courseId, 'complete', 'Course ready.', ordinal++);
+    }
   } catch (err) {
     await setState(jobId, 'FAILED', 'failed', 0, `Generation failed: ${(err as Error).message}`);
     updateGenerationJob(jobId, { state: 'FAILED', finishedAt: Date.now(), error: (err as Error).message });
@@ -293,41 +325,12 @@ export async function executeGenerateCourseJob(jobId: string, courseId: string):
 }
 
 /**
- * Reconstruct a lightweight blueprint from already-persisted entities.
+ * Generate a fresh blueprint and persist it (both entities and canonical snapshot).
  */
-function reconstructBlueprint(courseId: string): CurriculumBlueprint {
-  const units = listUnits(courseId);
-  const objectives = listObjectives(courseId);
-  return {
-    title: 'Course',
-    description: '',
-    intendedLearner: '',
-    assumedKnowledge: '',
-    units: units.map((u) => ({
-      title: u.title,
-      description: u.description ?? undefined,
-      classification: (u.classification as CurriculumBlueprint['units'][number]['classification']) ?? 'REQUIRED',
-      topics: [],
-      objectives: objectives
-        .filter((o) => o.unitId === u.id)
-        .map((o) => ({
-          statement: o.statement,
-          category: o.category,
-          difficulty: o.difficulty,
-          importance: o.importance,
-          classification: (o.classification as 'REQUIRED' | 'PREREQUISITE' | 'RECOMMENDED' | 'ENRICHMENT') ?? 'REQUIRED',
-          prerequisites: [],
-        })),
-      estimatedMinutes: u.estimatedMinutes ?? undefined,
-    })),
-    prerequisites: [],
-    classifications: {
-      required: objectives.filter((o) => o.classification === 'REQUIRED').map((o) => o.id),
-      prerequisite: objectives.filter((o) => o.classification === 'PREREQUISITE').map((o) => o.id),
-      recommended: objectives.filter((o) => o.classification === 'RECOMMENDED').map((o) => o.id),
-      enrichment: objectives.filter((o) => o.classification === 'ENRICHMENT').map((o) => o.id),
-    },
-  };
+async function generateAndPersist(courseId: string): Promise<CurriculumBlueprint> {
+  const blueprint = await generateBlueprint(courseId);
+  await persistBlueprint(courseId, blueprint);
+  return blueprint;
 }
 
 /**
@@ -345,11 +348,47 @@ export async function executeRegenerateLessonJob(jobId: string, courseId: string
     const objectiveIds = JSON.parse(lesson.objectiveIds ?? '[]') as string[];
     if (objectiveIds.length === 0) throw pipelineFailed('Lesson has no associated objectives');
 
+    // Preserve user edits: fetch any user-edited fields and apply them after regeneration.
+    const userEdits = getUserEditsForEntity(courseId, 'lesson', lessonId);
+    const editMap = new Map<string, string>();
+    for (const edit of userEdits) {
+      if (edit.newValue != null) {
+        editMap.set(edit.field, edit.newValue);
+      }
+    }
+
     await setState(jobId, 'GENERATING', 'lesson_regeneration', 0.5, 'Generating new lesson content…');
     await emit(jobId, courseId, 'lesson_regeneration', 'Generating new lesson content…', 1);
 
     const lessonContent = await generateLesson(courseId, lesson.unitId, objectiveIds, lesson.topicId ?? undefined, lesson.ordinal);
-    persistLesson(courseId, lesson.unitId, lesson.topicId ?? undefined, lesson.ordinal, objectiveIds, lessonContent);
+
+    // Apply user edits back to the regenerated content.
+    let updatedContent = lessonContent;
+    if (editMap.has('content')) {
+      try {
+        updatedContent = JSON.parse(editMap.get('content')!) as LessonContent;
+      } catch { /* ignore malformed edit */ }
+    }
+    if (editMap.has('title')) {
+      const newTitle = editMap.get('title');
+      if (newTitle) {
+        updatedContent = { ...updatedContent, sections: updatedContent.sections.map((s, i) => i === 0 ? { ...s, title: newTitle } : s) };
+      }
+    }
+    if (editMap.has('summary')) {
+      const newSummary = editMap.get('summary');
+      if (newSummary) {
+        updatedContent = { ...updatedContent, summary: newSummary };
+      }
+    }
+    if (editMap.has('estimatedMinutes')) {
+      const newEst = editMap.get('estimatedMinutes');
+      if (newEst) {
+        updatedContent = { ...updatedContent, estimatedMinutes: Number(newEst) };
+      }
+    }
+
+    persistLesson(courseId, lesson.unitId, lesson.topicId ?? undefined, lesson.ordinal, objectiveIds, updatedContent);
 
     await setState(jobId, 'COMPLETED', 'lesson_regeneration', 1.0, 'Lesson regenerated.');
     updateGenerationJob(jobId, {
@@ -454,11 +493,45 @@ export async function executeReviseJob(jobId: string, courseId: string, runNumbe
 }
 
 /**
- * Generic dispatcher: run a job by its kind.
+ * Thrown when a job has been cancelled. Execution stops and the job's state is
+ * already persisted as CANCELLED by the canceller; this just terminates the
+ * current run without marking it FAILED.
+ */
+class JobCancelledError extends Error {
+  constructor(jobId: string) {
+    super(`Job ${jobId} was cancelled.`);
+    this.name = 'JobCancelledError';
+  }
+}
+
+/** Throw if the job has a pending cancellation request. */
+function checkCancelled(jobId: string): void {
+  const job = getGenerationJob(jobId);
+  if (job && (job.cancelRequested === 1 || job.state === 'CANCELLED')) {
+    throw new JobCancelledError(jobId);
+  }
+}
+
+/**
+ * Cancel a running job by marking it CANCELLED. Preserves already-persisted data
+ * (we never delete partially generated entities); the UI reflects CANCELLED.
+ */
+export function cancelJob(jobId: string): { jobId: string; cancelled: boolean } {
+  const job = cancelGenerationJob(jobId);
+  return { jobId, cancelled: !!job && job.state === 'CANCELLED' };
+}
+
+/**
+ * Generic dispatcher: run a job by its kind. Idempotent and cancellation-aware.
  */
 export async function runJob(jobId: string): Promise<void> {
   const job = getGenerationJob(jobId);
   if (!job) throw pipelineFailed(`Job ${jobId} not found`);
+
+  // Do not re-run a job already in a terminal state.
+  if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.state)) {
+    return;
+  }
 
   // Mark started.
   updateGenerationJob(jobId, {
@@ -469,39 +542,86 @@ export async function runJob(jobId: string): Promise<void> {
 
   const input = job.input ? JSON.parse(job.input) : {};
 
-  switch (job.kind) {
-    case 'ANALYZE_SOURCE': {
-      const docIds: string[] = Array.isArray(input.documentIds)
-        ? input.documentIds
-        : input.documentId
-          ? [input.documentId]
-          : [];
-      await executeAnalyzeSourceJob(jobId, job.courseId, docIds);
-      break;
+  try {
+    switch (job.kind) {
+      case 'ANALYZE_SOURCE': {
+        const docIds: string[] = Array.isArray(input.documentIds)
+          ? input.documentIds
+          : input.documentId
+            ? [input.documentId]
+            : [];
+        await executeAnalyzeSourceJob(jobId, job.courseId, docIds);
+        break;
+      }
+      case 'BLUEPRINT':
+        await executeBlueprintJob(jobId, job.courseId);
+        break;
+      case 'GENERATE_COURSE':
+        await executeGenerateCourseJob(jobId, job.courseId);
+        break;
+      case 'REGENERATE_LESSON': {
+        const lessonId = input.lessonId;
+        if (!lessonId) throw pipelineFailed('REGENERATE_LESSON job requires lessonId in input');
+        await executeRegenerateLessonJob(jobId, job.courseId, lessonId);
+        break;
+      }
+      case 'QA':
+        await executeQaJob(jobId, job.courseId);
+        break;
+      case 'REVISE': {
+        const runNumber = input.runNumber ?? 1;
+        await executeReviseJob(jobId, job.courseId, runNumber);
+        break;
+      }
+      default:
+        throw pipelineFailed(`Unsupported job kind: ${job.kind}`);
     }
-    case 'BLUEPRINT':
-      await executeBlueprintJob(jobId, job.courseId);
-      break;
-    case 'GENERATE_COURSE':
-      await executeGenerateCourseJob(jobId, job.courseId);
-      break;
-    case 'REGENERATE_LESSON': {
-      const lessonId = input.lessonId;
-      if (!lessonId) throw pipelineFailed('REGENERATE_LESSON job requires lessonId in input');
-      await executeRegenerateLessonJob(jobId, job.courseId, lessonId);
-      break;
-    }
-    case 'QA':
-      await executeQaJob(jobId, job.courseId);
-      break;
-    case 'REVISE': {
-      const runNumber = input.runNumber ?? 1;
-      await executeReviseJob(jobId, job.courseId, runNumber);
-      break;
-    }
-    default:
-      throw pipelineFailed(`Unsupported job kind: ${job.kind}`);
+  } catch (err) {
+    // Cancellation is not a failure — the job is already CANCELLED.
+    if (err instanceof JobCancelledError) return;
+
+    // Mark FAILED unless the job was cancelled concurrently.
+    checkCancelled(jobId);
+    updateGenerationJob(jobId, {
+      state: 'FAILED',
+      finishedAt: Date.now(),
+      error: (err as Error).message,
+    });
+    throw err;
   }
+}
+
+const RECOVERABLE_STATES = ['QUEUED', 'ANALYZING', 'PLANNING', 'GENERATING', 'VALIDATING', 'REVISING'];
+
+/** How long (ms) a job may remain in a non-terminal state before it's abandoned. */
+const ABANDONED_AFTER_MS = 5 * 60 * 1000;
+
+/**
+ * Recovery: rescan for jobs stuck in a non-terminal state (e.g. the process
+ * crashed mid-generation). For each abandoned job we mark it FAILED safely so it
+ * can be retried by the user, rather than leaving it permanently stuck.
+ */
+export async function recoverAbandonedJobs(): Promise<number> {
+  const cutoff = Date.now() - ABANDONED_AFTER_MS;
+  const abandoned = listAbandonedJobs(cutoff, RECOVERABLE_STATES);
+  for (const job of abandoned) {
+    updateGenerationJob(job.id, {
+      state: 'FAILED',
+      finishedAt: Date.now(),
+      error: 'Job was interrupted (process restart). Retry to resume.',
+      message: 'Job interrupted; retry to resume.',
+    });
+    createGenerationEvent({
+      id: `ev_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+      jobId: job.id,
+      courseId: job.courseId,
+      ordinal: 9999,
+      stage: 'recovery',
+      level: 'warn',
+      message: 'Job marked failed after process interruption.',
+    });
+  }
+  return abandoned.length;
 }
 
 /** Get current job progress for the UI. */

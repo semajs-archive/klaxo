@@ -21,10 +21,10 @@ import {
   listSourceDocuments,
   createSourceFragment,
   createKnowledgePackage,
+  updateKnowledgePackage,
   updateSourceDocument,
   createProvenance,
 } from '../db/repo';
-import { contentHash } from '../lib/ids';
 import { aiUnavailable, pipelineFailed } from '../lib/errors';
 import { extractPdfText } from './pdf';
 import { extractDocument } from './document-extraction';
@@ -316,45 +316,36 @@ export async function analyzeSources(input: AnalyzeSourcesInput): Promise<Source
     origin: 'AI_GENERATED',
   });
 
-  // 5. Link each detected objective back to its source fragments (provenance).
-  //    When the model does not cite a fragment, we conservatively mark the
-  //    objective as INFERRED_FROM the whole source set rather than fabricating
-  //    a specific citation.
-  for (const obj of analysis.objectives) {
+  // 5. Link knowledge package to source fragments (provenance for the KP itself).
+  //    Objective provenance will be created during blueprint persistence with REAL database IDs.
+  createProvenance({
+    id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+    courseId: input.courseId,
+    entityType: 'knowledge_package',
+    entityId: kp.id,
+    relation: 'DERIVED_FROM',
+    confidence: analysis.confidence,
+    note: 'Knowledge package derived from source fragments',
+  });
+
+  // Store fragment references in knowledge package for later blueprint provenance.
+  // We update the payload to include fragment refs per objective.
+  const updatedAnalysis = { ...analysis };
+  for (const obj of updatedAnalysis.objectives) {
     const sourceFragments = (obj.sourceFragmentIds ?? [])
       .map((id) => allFragments[Number(id)])
       .filter((f): f is SourceFragmentEvidence => f !== undefined);
-    if (sourceFragments.length > 0) {
-      for (const frag of sourceFragments) {
-        createProvenance({
-          id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
-          courseId: input.courseId,
-          entityType: 'objective',
-          entityId: hashObjective(analysis, obj.statement),
-          fragmentId: frag.id,
-          documentId: frag.documentId,
-          relation: 'DERIVED_FROM',
-          confidence: analysis.confidence,
-          note: obj.statement,
-        });
-      }
-    } else {
-      // No explicit citation — mark as inferred from the whole set.
-      const firstDoc = allFragments[0];
-      if (firstDoc) {
-        createProvenance({
-          id: `prov_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
-          courseId: input.courseId,
-          entityType: 'objective',
-          entityId: hashObjective(analysis, obj.statement),
-          documentId: firstDoc.documentId,
-          relation: 'INFERRED_FROM',
-          confidence: analysis.confidence,
-          note: obj.statement,
-        });
-      }
+    // Replace index-based refs with actual fragment IDs
+    obj.sourceFragmentIds = sourceFragments.map((f) => f.id);
+    if (sourceFragments.length === 0) {
+      // No explicit citation — mark as inferred from the whole source set.
+      obj.sourceFragmentIds = ['INFERRED_FROM_SOURCE_SET'];
     }
   }
+  // Update the knowledge package with fragment-resolved analysis
+  updateKnowledgePackage(kp.id, {
+    payload: JSON.stringify(updatedAnalysis),
+  });
 
   // 6. Mark documents as extracted.
   for (const docId of input.documentIds) {
@@ -376,11 +367,6 @@ export async function analyzeSources(input: AnalyzeSourcesInput): Promise<Source
     model,
     provider: provider.id,
   };
-}
-
-/** Deterministic id for an objective, used to link provenance across runs. */
-function hashObjective(analysis: SourceAnalysis, statement: string): string {
-  return `obj_${contentHash(analysis.title, statement)}`;
 }
 
 /** Backward-compatible single-document wrapper. */

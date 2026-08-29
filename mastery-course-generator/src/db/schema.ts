@@ -152,6 +152,35 @@ export const knowledgePackages = sqliteTable(
   (t) => [index('kp_course_idx').on(t.courseId)],
 );
 
+/* ------------------------------------------------------------ blueprint ---- */
+
+/**
+ * Persisted canonical blueprint snapshot. This is the single source of truth
+ * for the curriculum design — generation/recovery always reads from here rather
+ * than reconstructing an approximate blueprint from already-persisted entities.
+ */
+export const blueprints = sqliteTable(
+  'blueprints',
+  {
+    id: text('id').primaryKey(),
+    courseId: text('course_id')
+      .notNull()
+      .references(() => courses.id),
+    /** Full canonical CurriculumBlueprint as JSON, never a reconstruction. */
+    payload: text('payload').notNull(),
+    /** Knowledge package id this blueprint was derived from. */
+    knowledgePackageId: text('knowledge_package_id'),
+    /** draft | approved */
+    status: text('status').notNull().default('draft'),
+    createdAt: integer('created_at').notNull().$defaultFn(now),
+    updatedAt: integer('updated_at').notNull().$defaultFn(now),
+  },
+  (t) => [
+    index('bp_course_idx').on(t.courseId),
+    uniqueIndex('bp_course_uq').on(t.courseId),
+  ],
+);
+
 /* ------------------------------------------------------------ curriculum ---- */
 
 export const units = sqliteTable(
@@ -604,6 +633,7 @@ export const ALL_TABLES = [
   sourceDocuments,
   sourceFragments,
   knowledgePackages,
+  blueprints,
   units,
   topics,
   objectives,
