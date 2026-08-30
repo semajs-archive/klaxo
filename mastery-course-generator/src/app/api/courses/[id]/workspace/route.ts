@@ -5,8 +5,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/auth';
-import { getCourse, listUnits, listObjectives, listLessons, listAssessments, listQuestions } from '@/db/repo';
-import { notFound, toAppError } from '@/lib/errors';
+import { requireCourseAccess } from '@/lib/course-access';
+import { listUnits, listObjectives, listLessons, listAssessments, listQuestions } from '@/db/repo';
+import { toAppError } from '@/lib/errors';
 
 export async function GET(
   req: NextRequest,
@@ -16,9 +17,7 @@ export async function GET(
     const userId = await requireUserId();
     const { id } = await params;
 
-    const course = getCourse(id);
-    if (!course) throw notFound('Course not found');
-    if (course.userId !== userId) throw notFound('Course not found');
+    requireCourseAccess(id, userId, 'learner');
 
     const units = listUnits(id);
     const objectives = listObjectives(id);

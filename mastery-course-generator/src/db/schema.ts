@@ -26,6 +26,10 @@ export const users = sqliteTable(
     id: text('id').primaryKey(),
     email: text('email').notNull(),
     displayName: text('display_name'),
+    /** scrypt hash; null for guest and share-link learner accounts. */
+    passwordHash: text('password_hash'),
+    // teacher | student
+    role: text('role').notNull().default('teacher'),
     createdAt: integer('created_at').notNull().$defaultFn(now),
   },
   (t) => [uniqueIndex('users_email_uq').on(t.email)],
@@ -610,6 +614,52 @@ export const userEdits = sqliteTable(
 
 /* ----------------------------------------------------------- AI response ---- */
 
+/* --------------------------------------------------------------- sharing ---- */
+
+/**
+ * A share link for a course. Anyone with the token can join the course as a
+ * learner. Revoking sets revokedAt; existing enrollments keep their history
+ * but the link stops admitting new learners.
+ */
+export const courseShares = sqliteTable(
+  'course_shares',
+  {
+    id: text('id').primaryKey(),
+    courseId: text('course_id')
+      .notNull()
+      .references(() => courses.id),
+    token: text('token').notNull(),
+    createdAt: integer('created_at').notNull().$defaultFn(now),
+    revokedAt: integer('revoked_at'),
+  },
+  (t) => [
+    uniqueIndex('shares_token_uq').on(t.token),
+    index('shares_course_idx').on(t.courseId),
+  ],
+);
+
+/** A learner who joined a course through a share link. */
+export const courseEnrollments = sqliteTable(
+  'course_enrollments',
+  {
+    id: text('id').primaryKey(),
+    courseId: text('course_id')
+      .notNull()
+      .references(() => courses.id),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    shareId: text('share_id')
+      .notNull()
+      .references(() => courseShares.id),
+    joinedAt: integer('joined_at').notNull().$defaultFn(now),
+  },
+  (t) => [
+    uniqueIndex('enroll_course_user_uq').on(t.courseId, t.userId),
+    index('enroll_course_idx').on(t.courseId),
+  ],
+);
+
 /**
  * Cache of structured AI responses, keyed by a content hash of
  * (stage + model + prompt). Lets targeted regeneration skip unaffected work.
@@ -650,5 +700,7 @@ export const ALL_TABLES = [
   generationJobs,
   generationEvents,
   userEdits,
+  courseShares,
+  courseEnrollments,
   aiCache,
 ] as const;

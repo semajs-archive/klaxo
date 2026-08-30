@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
 
 const links = [
@@ -33,6 +34,108 @@ export function HeaderNav() {
         </Link>
       ))}
     </nav>
+  );
+}
+
+interface Me {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: string;
+  isGuest: boolean;
+}
+
+export function AccountMenu() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [me, setMe] = useState<Me | null | undefined>(undefined);
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setMe(data.user ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setMe(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  if (me === undefined) return <div className="h-9 w-20" aria-hidden="true" />;
+
+  if (!me || me.isGuest) {
+    return (
+      <Link
+        href="/login"
+        className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-1.5 font-display text-sm font-bold shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none"
+      >
+        Sign in
+      </Link>
+    );
+  }
+
+  const name = me.displayName || me.email.split('@')[0];
+
+  if (me.role === 'student') {
+    return (
+      <span className="rounded-full bg-secondary px-4 py-2 text-sm font-semibold">{name}</span>
+    );
+  }
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold hover:bg-secondary/70"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {name}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3.5 w-3.5" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-xl border-[1.5px] border-ink bg-card shadow-pop"
+        >
+          <div className="border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
+            {me.email}
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            className="w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-secondary"
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' });
+              setOpen(false);
+              setMe(null);
+              router.push('/');
+              router.refresh();
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
