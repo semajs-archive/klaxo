@@ -6,7 +6,7 @@ const columns = [
     heading: 'Product',
     links: [
       { href: '/how-it-works', label: 'How it works' },
-      { href: '/for-teachers', label: 'For teachers' },
+      { href: '/for-educators', label: 'For educators' },
       { href: '/pricing', label: 'Pricing' },
     ],
   },
@@ -33,7 +33,7 @@ export function SiteFooter() {
         <div>
           <Wordmark />
           <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">
-            Curriculum engineering for teachers: real source material in, a structured
+            Curriculum engineering for educators: real source material in, a structured
             mastery course out.
           </p>
         </div>

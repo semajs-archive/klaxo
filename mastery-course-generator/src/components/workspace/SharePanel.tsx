@@ -122,7 +122,7 @@ export default function SharePanel({ courseId }: { courseId: string }) {
                   <Button
                     size="sm"
                     variant="secondary"
-                    className={cn(copied && 'bg-brand-300')}
+                    className={cn(copied && 'bg-brand-300 text-on-brand')}
                     onClick={async () => {
                       await navigator.clipboard.writeText(link);
                       setCopied(true);

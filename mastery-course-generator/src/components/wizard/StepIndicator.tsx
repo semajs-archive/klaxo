@@ -91,7 +91,7 @@ export function StepIndicator({
                   className={clsx(
                     'flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] font-display text-sm font-bold transition-colors',
                     isCompleted && 'border-ink bg-primary text-primary-foreground',
-                    isCurrent && 'border-ink bg-brand-400 text-foreground shadow-pop-sm',
+                    isCurrent && 'border-ink bg-brand-400 text-on-brand shadow-pop-sm',
                     isWarning && 'border-ink bg-warning text-warning-foreground',
                     isFailed && 'border-ink bg-error text-error-foreground',
                     isLocked && 'border-border bg-muted text-muted-foreground opacity-60',

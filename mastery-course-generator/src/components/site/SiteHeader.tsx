@@ -15,7 +15,7 @@ import { cn } from '@/lib/cn';
 
 export const siteLinks = [
   { href: '/how-it-works', label: 'How it works' },
-  { href: '/for-teachers', label: 'For teachers' },
+  { href: '/for-educators', label: 'For educators' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/about', label: 'About' },
 ];
@@ -77,7 +77,7 @@ export function SiteHeader() {
             ) : signedIn ? (
               <Link
                 href="/dashboard"
-                className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-2 font-display text-sm font-bold shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none"
+                className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-2 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none"
               >
                 Go to my courses
               </Link>
@@ -91,7 +91,7 @@ export function SiteHeader() {
                 </Link>
                 <Link
                   href="/login?mode=signup"
-                  className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-2 font-display text-sm font-bold shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none"
+                  className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-2 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none"
                 >
                   Get started
                 </Link>
@@ -137,7 +137,7 @@ export function SiteHeader() {
               {signedIn ? (
                 <Link
                   href="/dashboard"
-                  className="flex min-h-[52px] items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 font-display text-base font-bold shadow-pop-sm"
+                  className="flex min-h-[52px] items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 font-display text-base font-bold text-on-brand shadow-pop-sm"
                 >
                   Go to my courses
                 </Link>
@@ -145,7 +145,7 @@ export function SiteHeader() {
                 <>
                   <Link
                     href="/login?mode=signup"
-                    className="flex min-h-[52px] items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 font-display text-base font-bold shadow-pop-sm"
+                    className="flex min-h-[52px] items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 font-display text-base font-bold text-on-brand shadow-pop-sm"
                   >
                     Get started
                   </Link>

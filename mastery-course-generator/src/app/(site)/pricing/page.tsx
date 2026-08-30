@@ -59,7 +59,7 @@ export default function PricingPage() {
         kicker="Pricing"
         title="It is free, and the code is"
         highlight="open."
-        lede="KLAXO was built because good curriculum tooling should not be priced per teacher. Use the hosted version, or run your own copy and plug in whichever AI provider you want."
+        lede="KLAXO was built because good curriculum tooling should not be priced per educator. Use the hosted version, or run your own copy and plug in whichever AI provider you want."
       />
 
       <section className="grid gap-6 lg:grid-cols-2">
@@ -67,7 +67,7 @@ export default function PricingPage() {
           <div
             key={option.name}
             className={`flex flex-col rounded-2xl border-[1.5px] border-ink p-7 shadow-pop sm:p-8 ${
-              option.featured ? 'bg-brand-100' : 'bg-card'
+              option.featured ? 'bg-brand-surface' : 'bg-card'
             }`}
           >
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
