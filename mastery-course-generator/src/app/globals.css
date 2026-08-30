@@ -27,7 +27,7 @@
   --color-accent: var(--color-neutral-100); --color-accent-foreground: var(--color-neutral-900);
   --color-accent-50: oklch(0.98 0.03 92); --color-accent-100: oklch(0.955 0.06 92); --color-accent-200: oklch(0.93 0.09 90); --color-accent-300: oklch(0.9 0.125 89); --color-accent-400: oklch(0.87 0.145 88); --color-accent-500: oklch(0.845 0.155 86); --color-accent-600: oklch(0.75 0.15 82); --color-accent-700: oklch(0.62 0.13 78); --color-accent-800: oklch(0.5 0.105 74); --color-accent-900: oklch(0.4 0.085 72); --color-accent-950: oklch(0.3 0.065 70);
 
-  --color-background: var(--color-neutral-50); --color-foreground: var(--color-neutral-900); --color-card: var(--color-white); --color-card-foreground: var(--color-neutral-900); --color-popover: var(--color-white); --color-popover-foreground: var(--color-neutral-900); --color-primary: var(--color-primary-600); --color-primary-foreground: var(--color-white); --color-secondary: var(--color-neutral-100); --color-secondary-foreground: var(--color-neutral-900); --color-muted: var(--color-neutral-100); --color-muted-foreground: var(--color-neutral-500); --color-destructive: var(--color-red-600); --color-destructive-foreground: var(--color-white); --color-border: var(--color-neutral-200); --color-input: var(--color-neutral-300); --color-ring: var(--color-primary-500); --color-ink: var(--color-neutral-900); --color-grid-line: var(--color-neutral-300); --color-on-brand: var(--color-neutral-950); --color-brand-surface: var(--color-brand-100); --color-marker: var(--color-brand-400);
+  --color-background: var(--color-neutral-50); --color-foreground: var(--color-neutral-900); --color-card: var(--color-white); --color-card-foreground: var(--color-neutral-900); --color-popover: var(--color-white); --color-popover-foreground: var(--color-neutral-900); --color-primary: var(--color-primary-600); --color-primary-foreground: var(--color-white); --color-secondary: var(--color-neutral-100); --color-secondary-foreground: var(--color-neutral-900); --color-muted: var(--color-neutral-100); --color-muted-foreground: var(--color-neutral-500); --color-destructive: var(--color-red-600); --color-destructive-foreground: var(--color-white); --color-border: var(--color-neutral-200); --color-input: var(--color-neutral-300); --color-ring: var(--color-primary-500); --color-ink: var(--color-neutral-900); --color-grid-line: var(--color-neutral-300); --color-on-brand: var(--color-neutral-950); --color-brand-surface: var(--color-brand-100); --color-marker: var(--color-brand-400); --color-on-marker: var(--color-neutral-900); --color-kicker: var(--color-primary-600);
 
   --color-success: var(--color-emerald-600); --color-success-foreground: var(--color-white); --color-success-subtle: var(--color-emerald-50); --color-success-subtle-foreground: var(--color-emerald-800); --color-warning: var(--color-brand-500); --color-warning-foreground: var(--color-brand-950); --color-warning-subtle: var(--color-brand-100); --color-warning-subtle-foreground: var(--color-brand-900); --color-error: var(--color-red-600); --color-error-foreground: var(--color-white); --color-error-subtle: var(--color-red-50); --color-error-subtle-foreground: var(--color-red-800); --color-info: var(--color-primary-600); --color-info-foreground: var(--color-white); --color-info-subtle: var(--color-primary-50); --color-info-subtle-foreground: var(--color-primary-800);
 
@@ -47,21 +47,83 @@
 }
 
 /*
-  Dark mode follows the reader's device setting. There is no in-app toggle and
-  no `.dark` class: the OS already knows whether they want a dark screen, so
-  the tokens simply flip under prefers-color-scheme and every component that
-  is built from them comes along.
+  Dark mode follows the reader's device setting — no toggle, no stored choice.
+
+  This is a designed palette, not the light one inverted. Inverting was the
+  first attempt and it looked cheap, for two reasons worth writing down:
+
+  1. In daylight KLAXO is ink printed on warm paper: a dark hairline round
+     every card and a hard offset shadow under it. Flip those literally and
+     the line and the shadow both go white, so every card becomes a glowing
+     sticker outline on black. At night the line has to *recede* — a quiet
+     warm grey — and the offset shadow has to go DARKER than the page, which
+     keeps the chunky printed feel without the glow.
+  2. Flat near-black is not the dark version of warm paper. The ground here
+     is a warm charcoal, and each surface steps up from it, so depth comes
+     from the surfaces rather than from outlines.
+
+  Klaxon yellow is the one colour that does not move: it reads on both
+  grounds, so it stays the accent and anything sitting on it keeps dark ink.
 */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: var(--color-neutral-950); --color-foreground: var(--color-neutral-50); --color-card: var(--color-neutral-900); --color-card-foreground: var(--color-neutral-50); --color-popover: var(--color-neutral-900); --color-popover-foreground: var(--color-neutral-50); --color-primary: var(--color-primary-400); --color-primary-foreground: var(--color-primary-950); --color-secondary: var(--color-neutral-800); --color-secondary-foreground: var(--color-neutral-50); --color-muted: var(--color-neutral-800); --color-muted-foreground: var(--color-neutral-400); --color-border: var(--color-neutral-800); --color-input: var(--color-neutral-700); --color-ring: var(--color-primary-400); --color-success: var(--color-emerald-500); --color-warning: var(--color-amber-400); --color-error: var(--color-red-500); --color-info: var(--color-blue-400); --color-ink: var(--color-neutral-50); --shadow-pop: 0 3px 0 0 var(--color-neutral-50); --shadow-pop-sm: 0 2px 0 0 var(--color-neutral-50); --shadow-pop-lg: 0 4px 0 0 var(--color-neutral-50);
-    /* Paper turns to ink, so the "printed" grid has to invert with it. */
-    --color-grid-line: var(--color-neutral-700);
-    /* Klaxon yellow stays yellow in the dark, so anything sitting on it keeps
-       dark ink; surfaces that were a yellow *tint* have to go deep instead,
-       or light body text lands on a near-white card. */
-    --color-brand-surface: oklch(0.3 0.06 88);
-    --color-marker: var(--color-brand-800);
+    /* Warm charcoal ground, each surface a step up from it. */
+    --color-background: oklch(0.185 0.011 74);
+    --color-card: oklch(0.238 0.012 74);
+    --color-popover: oklch(0.262 0.012 74);
+    --color-secondary: oklch(0.292 0.012 74);
+    --color-muted: oklch(0.278 0.011 74);
+
+    /* Warm off-white, never pure white — pure white vibrates on dark. */
+    --color-foreground: oklch(0.945 0.008 88);
+    --color-card-foreground: oklch(0.945 0.008 88);
+    --color-popover-foreground: oklch(0.945 0.008 88);
+    --color-secondary-foreground: oklch(0.945 0.008 88);
+    --color-muted-foreground: oklch(0.715 0.012 82);
+
+    --color-border: oklch(0.318 0.012 74);
+    --color-input: oklch(0.372 0.013 74);
+
+    /* The drawn line recedes at night instead of glowing. */
+    --color-ink: oklch(0.435 0.014 74);
+    --color-grid-line: oklch(0.4 0.013 74);
+
+    /* The signature offset shadow, pressed into the page rather than lit. */
+    --shadow-pop: 0 3px 0 0 oklch(0.11 0.008 70);
+    --shadow-pop-sm: 0 2px 0 0 oklch(0.11 0.008 70);
+    --shadow-pop-lg: 0 4px 0 0 oklch(0.11 0.008 70);
+    --shadow-sm: 0 1px 2px 0 oklch(0.08 0.006 70 / 0.5);
+    --shadow-md: 0 2px 8px -1px oklch(0.08 0.006 70 / 0.55);
+    --shadow-lg: 0 10px 22px -4px oklch(0.08 0.006 70 / 0.6);
+    --shadow-xl: 0 18px 34px -6px oklch(0.08 0.006 70 / 0.65);
+
+    /* Cobalt keeps its saturation instead of washing out to lavender. */
+    --color-primary: oklch(0.545 0.212 267);
+    --color-primary-foreground: oklch(0.99 0 0);
+    --color-ring: oklch(0.68 0.16 266);
+
+    /* Yellow stays yellow. A yellow *tint* cannot: it goes deep amber, or
+       light body text ends up on a near-white card. */
+    --color-brand-surface: oklch(0.315 0.072 88);
+    --color-marker: var(--color-brand-400);
+    /* Small caps labels need to lift off charcoal, not sink into it. */
+    --color-kicker: oklch(0.75 0.135 266);
+
+    /* Status chips: tint the ground, lift the text — the reverse of daylight. */
+    --color-success: oklch(0.72 0.16 152);
+    --color-success-subtle: oklch(0.28 0.055 152);
+    --color-success-subtle-foreground: oklch(0.87 0.13 152);
+    --color-warning: var(--color-brand-400);
+    --color-warning-foreground: var(--color-neutral-950);
+    --color-warning-subtle: oklch(0.3 0.065 88);
+    --color-warning-subtle-foreground: oklch(0.89 0.12 90);
+    --color-error: oklch(0.68 0.2 28);
+    --color-error-subtle: oklch(0.29 0.09 28);
+    --color-error-subtle-foreground: oklch(0.86 0.11 28);
+    --color-info: oklch(0.7 0.15 266);
+    --color-info-subtle: oklch(0.29 0.09 266);
+    --color-info-subtle-foreground: oklch(0.87 0.1 266);
+    --color-destructive: oklch(0.58 0.2 28);
   }
 }
 
@@ -85,8 +147,11 @@
   .card-surface { background-color: var(--color-card); border: 1.5px solid var(--color-ink); border-radius: var(--radius-xl); box-shadow: var(--shadow-pop); }
   .badge { display: inline-flex; align-items: center; gap: 0.375rem; border-radius: 0.5rem; padding: 0.25rem 0.625rem; font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
   .status-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background-color: currentColor; }
-  .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-primary-600); }
+  .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-kicker); }
   .marker-hl { background-image: linear-gradient(transparent 64%, var(--color-marker) 64%); }
+  @media (prefers-color-scheme: dark) {
+    .marker-hl { background-image: linear-gradient(var(--color-marker), var(--color-marker)); color: var(--color-on-marker); padding: 0 0.1em 0.06em; border-radius: 0.12em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  }
 }
 
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
