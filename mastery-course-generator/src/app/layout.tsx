@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import Link from 'next/link';
 import { Bricolage_Grotesque, Inter, Spline_Sans_Mono } from 'next/font/google';
-import { HeaderNav, BottomNav, AccountMenu } from '@/components/SiteNav';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -28,57 +26,20 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-function Wordmark() {
-  return (
-    <span className="inline-flex items-center gap-2.5">
-      <span
-        aria-hidden="true"
-        className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-foreground"
-      >
-        {/* Klaxon horn */}
-        <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-          <path
-            d="M4 14V10c0-.6.4-1 1-1h3l6-5c.7-.5 1.5 0 1.5.8v14.4c0 .8-.8 1.3-1.5.8l-6-5H5c-.6 0-1-.4-1-1Z"
-            fill="currentColor"
-          />
-          <path
-            d="M18.5 9.5c.9 1.5.9 3.5 0 5"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      </span>
-      <span className="font-display text-[21px] font-extrabold tracking-tight">klaxo</span>
-    </span>
-  );
-}
-
+/**
+ * Root layout holds only the document shell and fonts.
+ *
+ * Chrome is deliberately not here: the marketing site `(site)` and the product
+ * `(app)` are two different experiences with two different headers, and each
+ * group layout supplies its own.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body
         className={`${inter.variable} ${bricolage.variable} ${splineMono.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
       >
-        <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-xl">
-          <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <Link
-              href="/dashboard"
-              className="rounded-xl text-foreground transition-opacity hover:opacity-80 focus-visible:outline-none"
-              aria-label="KLAXO — go to dashboard"
-            >
-              <Wordmark />
-            </Link>
-            <div className="flex items-center gap-3">
-              <HeaderNav />
-              <AccountMenu />
-            </div>
-          </div>
-        </header>
-        <main className="relative mx-auto w-full max-w-6xl px-4 py-8 pb-24 sm:px-6 sm:pb-10 lg:px-8 lg:py-10">
-          {children}
-        </main>
-        <BottomNav />
+        {children}
       </body>
     </html>
   );

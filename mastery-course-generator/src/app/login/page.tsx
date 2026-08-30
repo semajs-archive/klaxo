@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
 
+/** Only send people to in-app paths, never to an attacker-supplied URL. */
+function safeNext(value: string | null): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
+  return value;
+}
+
 function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
@@ -18,6 +24,8 @@ function LoginForm() {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [guestBusy, setGuestBusy] = useState(false);
+  const next = safeNext(search.get('next'));
 
   const submit = useCallback(async () => {
     setBusy(true);
@@ -34,13 +42,28 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Something went wrong.');
-      router.push('/dashboard');
+      router.push(next);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setBusy(false);
     }
-  }, [mode, email, password, displayName, router]);
+  }, [mode, email, password, displayName, router, next]);
+
+  /** Kept from the original build: try the app without making an account. */
+  const continueAsGuest = useCallback(async () => {
+    setGuestBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/bootstrap', { method: 'POST' });
+      if (!res.ok) throw new Error('Could not start a guest session.');
+      router.push(next);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setGuestBusy(false);
+    }
+  }, [router, next]);
 
   const canSubmit = email.trim() !== '' && password !== '' && !busy;
 
@@ -112,6 +135,27 @@ function LoginForm() {
               ? 'New here? Create an account'
               : 'Already have an account? Sign in'}
           </button>
+
+          <div className="mt-6 flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+              or
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button
+            variant="outline"
+            className="mt-6 w-full"
+            size="lg"
+            loading={guestBusy}
+            onClick={() => void continueAsGuest()}
+          >
+            Look around without an account
+          </Button>
+          <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
+            Guest courses live in this browser only. Create an account later and they come with you.
+          </p>
         </CardContent>
       </Card>
     </div>
