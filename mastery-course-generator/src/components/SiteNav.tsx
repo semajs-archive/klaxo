@@ -5,18 +5,20 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
 
-const links = [
-  { href: '/', label: 'Home' },
-  { href: '/dashboard', label: 'My courses' },
-];
+/**
+ * In-app navigation only. The public marketing site has its own header, so
+ * nothing here links back out to it except sign-out.
+ */
+const links = [{ href: '/dashboard', label: 'My courses' }];
 
 function isActive(pathname: string, href: string) {
-  if (href === '/') return pathname === '/';
   return pathname.startsWith(href);
 }
 
 export function HeaderNav() {
   const pathname = usePathname();
+  const me = useMe();
+  if (me?.role === 'student') return null;
   return (
     <nav aria-label="Primary" className="hidden items-center gap-1.5 sm:flex">
       {links.map((link) => (
@@ -45,12 +47,10 @@ interface Me {
   isGuest: boolean;
 }
 
-export function AccountMenu() {
-  const router = useRouter();
+/** `undefined` while loading, `null` when signed out. */
+function useMe(): Me | null | undefined {
   const pathname = usePathname();
   const [me, setMe] = useState<Me | null | undefined>(undefined);
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +66,17 @@ export function AccountMenu() {
       cancelled = true;
     };
   }, [pathname]);
+
+  return me;
+}
+
+export function AccountMenu() {
+  const router = useRouter();
+  const loaded = useMe();
+  const [signedOut, setSignedOut] = useState(false);
+  const me = signedOut ? null : loaded;
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -126,7 +137,7 @@ export function AccountMenu() {
             onClick={async () => {
               await fetch('/api/auth/logout', { method: 'POST' });
               setOpen(false);
-              setMe(null);
+              setSignedOut(true);
               router.push('/');
               router.refresh();
             }}
@@ -141,12 +152,14 @@ export function AccountMenu() {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const me = useMe();
+  if (me?.role === 'student') return null;
   return (
     <nav
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-ink bg-card pb-[env(safe-area-inset-bottom)] sm:hidden"
     >
-      <div className="grid grid-cols-2">
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}>
         {links.map((link) => {
           const active = isActive(pathname, link.href);
           return (
@@ -159,17 +172,10 @@ export function BottomNav() {
                 active ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
-              {link.href === '/' ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
-                  <path d="M3 10.5 12 3l9 7.5" />
-                  <path d="M5 9.5V21h14V9.5" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
-                  <path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z" />
-                  <path d="M4 19a2 2 0 0 0 2 2h13" />
-                </svg>
-              )}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+                <path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z" />
+                <path d="M4 19a2 2 0 0 0 2 2h13" />
+              </svg>
               <span className={cn(active && 'border-b-2 border-brand-500')}>{link.label}</span>
             </Link>
           );

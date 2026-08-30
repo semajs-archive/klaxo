@@ -41,6 +41,27 @@ const features = [
   },
 ];
 
+const explore = [
+  {
+    href: '/how-it-works',
+    title: 'How it works',
+    body: 'The six stages your material moves through, and what you can edit at each one.',
+    cta: 'See the pipeline',
+  },
+  {
+    href: '/for-teachers',
+    title: 'For teachers',
+    body: 'Share links with no student accounts, mastery per objective, and the questions that come up first.',
+    cta: 'What you get',
+  },
+  {
+    href: '/pricing',
+    title: 'Pricing',
+    body: 'Free to use, open source, and self-hostable with your own AI provider.',
+    cta: 'See the terms',
+  },
+];
+
 export default function HomePage() {
   return (
     <div className="space-y-16 pb-8">
@@ -60,11 +81,11 @@ export default function HomePage() {
               and learner mastery built into the workflow.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/dashboard">
-                <Button size="lg" className="w-full sm:w-auto">Build a course</Button>
+              <Link href="/login?mode=signup">
+                <Button size="lg" className="w-full sm:w-auto">Get started — it&apos;s free</Button>
               </Link>
-              <Link href="/dashboard">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto">See my courses</Button>
+              <Link href="/how-it-works">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">See how it works</Button>
               </Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -135,6 +156,33 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section>
+        <div className="max-w-2xl">
+          <p className="kicker">Explore</p>
+          <h2 className="mt-2 font-display text-3xl font-extrabold sm:text-4xl">
+            The rest of the story.
+          </h2>
+        </div>
+        <div className="mt-8 grid gap-5 md:grid-cols-3">
+          {explore.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group flex flex-col rounded-2xl border-[1.5px] border-ink bg-card p-6 shadow-pop transition-transform duration-200 hover:-translate-y-0.5"
+            >
+              <h3 className="font-display text-lg font-bold">{item.title}</h3>
+              <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">{item.body}</p>
+              <span className="mt-5 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-primary">
+                {item.cta}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="relative overflow-hidden rounded-2xl border-[1.5px] border-ink bg-primary p-7 text-primary-foreground shadow-pop-lg sm:p-9">
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -144,9 +192,9 @@ export default function HomePage() {
               Start from a blank course or your own source material and move from evidence to a learner-ready curriculum.
             </p>
           </div>
-          <Link href="/dashboard" className="shrink-0">
+          <Link href="/login?mode=signup" className="shrink-0">
             <Button size="lg" variant="secondary">
-              Start building
+              Create an account
             </Button>
           </Link>
         </div>
