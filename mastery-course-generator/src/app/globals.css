@@ -49,81 +49,83 @@
 /*
   Dark mode follows the reader's device setting — no toggle, no stored choice.
 
-  This is a designed palette, not the light one inverted. Inverting was the
-  first attempt and it looked cheap, for two reasons worth writing down:
+  Daylight KLAXO is ink on warm paper, with cobalt for the engineered moments
+  and klaxon yellow for the loud ones. At night that warm paper grey turned
+  out to fight the cobalt: warm brown-grey under a cold blue never settles,
+  and the yellow sat on top of the argument.
 
-  1. In daylight KLAXO is ink printed on warm paper: a dark hairline round
-     every card and a hard offset shadow under it. Flip those literally and
-     the line and the shadow both go white, so every card becomes a glowing
-     sticker outline on black. At night the line has to *recede* — a quiet
-     warm grey — and the offset shadow has to go DARKER than the page, which
-     keeps the chunky printed feel without the glow.
-  2. Flat near-black is not the dark version of warm paper. The ground here
-     is a warm charcoal, and each surface steps up from it, so depth comes
-     from the surfaces rather than from outlines.
+  So night is the blueprint instead of the paper. The ground is deep ink navy
+  carrying the same hue as the cobalt, which means the blue now belongs to the
+  page rather than being dropped onto it, and every surface steps up in that
+  one hue. Yellow is the only warm thing left, so it reads as the signal it is
+  meant to be.
 
-  Klaxon yellow is the one colour that does not move: it reads on both
-  grounds, so it stays the accent and anything sitting on it keeps dark ink.
+  Two things that do NOT invert:
+  - the drawn line and its offset shadow. Flip them literally and both go
+    white, and every card becomes a glowing sticker outline. The line recedes
+    to a quiet blue-grey; the shadow goes DARKER than the page, keeping the
+    printed feel without the glow.
+  - klaxon yellow. It reads on both grounds, so anything sitting on it keeps
+    dark ink.
 */
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Warm charcoal ground, each surface a step up from it. */
-    --color-background: oklch(0.185 0.011 74);
-    --color-card: oklch(0.238 0.012 74);
-    --color-popover: oklch(0.262 0.012 74);
-    --color-secondary: oklch(0.292 0.012 74);
-    --color-muted: oklch(0.278 0.011 74);
+    /* Ink navy ground; each surface a step up, all on the cobalt hue. */
+    --color-background: oklch(0.168 0.024 265);
+    --color-card: oklch(0.216 0.028 265);
+    --color-popover: oklch(0.246 0.03 265);
+    --color-secondary: oklch(0.285 0.032 265);
+    --color-muted: oklch(0.268 0.03 265);
 
-    /* Warm off-white, never pure white — pure white vibrates on dark. */
-    --color-foreground: oklch(0.945 0.008 88);
-    --color-card-foreground: oklch(0.945 0.008 88);
-    --color-popover-foreground: oklch(0.945 0.008 88);
-    --color-secondary-foreground: oklch(0.945 0.008 88);
-    --color-muted-foreground: oklch(0.715 0.012 82);
+    /* Off-white with a trace of the same blue — never pure white. */
+    --color-foreground: oklch(0.955 0.006 258);
+    --color-card-foreground: oklch(0.955 0.006 258);
+    --color-popover-foreground: oklch(0.955 0.006 258);
+    --color-secondary-foreground: oklch(0.955 0.006 258);
+    --color-muted-foreground: oklch(0.735 0.022 262);
 
-    --color-border: oklch(0.318 0.012 74);
-    --color-input: oklch(0.372 0.013 74);
+    --color-border: oklch(0.312 0.034 265);
+    --color-input: oklch(0.365 0.036 265);
 
-    /* The drawn line recedes at night instead of glowing. */
-    --color-ink: oklch(0.435 0.014 74);
-    --color-grid-line: oklch(0.4 0.013 74);
+    /* The drawn line and the blueprint grid: present, not shouting. */
+    --color-ink: oklch(0.425 0.042 265);
+    --color-grid-line: oklch(0.415 0.045 265);
 
     /* The signature offset shadow, pressed into the page rather than lit. */
-    --shadow-pop: 0 3px 0 0 oklch(0.11 0.008 70);
-    --shadow-pop-sm: 0 2px 0 0 oklch(0.11 0.008 70);
-    --shadow-pop-lg: 0 4px 0 0 oklch(0.11 0.008 70);
-    --shadow-sm: 0 1px 2px 0 oklch(0.08 0.006 70 / 0.5);
-    --shadow-md: 0 2px 8px -1px oklch(0.08 0.006 70 / 0.55);
-    --shadow-lg: 0 10px 22px -4px oklch(0.08 0.006 70 / 0.6);
-    --shadow-xl: 0 18px 34px -6px oklch(0.08 0.006 70 / 0.65);
+    --shadow-pop: 0 3px 0 0 oklch(0.1 0.022 265);
+    --shadow-pop-sm: 0 2px 0 0 oklch(0.1 0.022 265);
+    --shadow-pop-lg: 0 4px 0 0 oklch(0.1 0.022 265);
+    --shadow-sm: 0 1px 2px 0 oklch(0.08 0.02 265 / 0.5);
+    --shadow-md: 0 2px 8px -1px oklch(0.08 0.02 265 / 0.55);
+    --shadow-lg: 0 10px 22px -4px oklch(0.08 0.02 265 / 0.6);
+    --shadow-xl: 0 18px 34px -6px oklch(0.08 0.02 265 / 0.65);
 
-    /* Cobalt keeps its saturation instead of washing out to lavender. */
-    --color-primary: oklch(0.545 0.212 267);
+    /* Cobalt lifts above its own ground rather than washing out on it. */
+    --color-primary: oklch(0.585 0.208 264);
     --color-primary-foreground: oklch(0.99 0 0);
-    --color-ring: oklch(0.68 0.16 266);
+    --color-ring: oklch(0.72 0.15 263);
 
-    /* Yellow stays yellow. A yellow *tint* cannot: it goes deep amber, or
-       light body text ends up on a near-white card. */
-    --color-brand-surface: oklch(0.315 0.072 88);
+    /* Yellow stays yellow. A yellow tint has to go deep amber, and against
+       navy that warmth is the whole point. */
+    --color-brand-surface: oklch(0.305 0.075 88);
     --color-marker: var(--color-brand-400);
-    /* Small caps labels need to lift off charcoal, not sink into it. */
-    --color-kicker: oklch(0.75 0.135 266);
+    --color-kicker: oklch(0.795 0.12 262);
 
     /* Status chips: tint the ground, lift the text — the reverse of daylight. */
-    --color-success: oklch(0.72 0.16 152);
-    --color-success-subtle: oklch(0.28 0.055 152);
-    --color-success-subtle-foreground: oklch(0.87 0.13 152);
+    --color-success: oklch(0.74 0.16 158);
+    --color-success-subtle: oklch(0.275 0.055 158);
+    --color-success-subtle-foreground: oklch(0.88 0.13 158);
     --color-warning: var(--color-brand-400);
     --color-warning-foreground: var(--color-neutral-950);
-    --color-warning-subtle: oklch(0.3 0.065 88);
-    --color-warning-subtle-foreground: oklch(0.89 0.12 90);
-    --color-error: oklch(0.68 0.2 28);
-    --color-error-subtle: oklch(0.29 0.09 28);
-    --color-error-subtle-foreground: oklch(0.86 0.11 28);
-    --color-info: oklch(0.7 0.15 266);
-    --color-info-subtle: oklch(0.29 0.09 266);
-    --color-info-subtle-foreground: oklch(0.87 0.1 266);
-    --color-destructive: oklch(0.58 0.2 28);
+    --color-warning-subtle: oklch(0.295 0.065 88);
+    --color-warning-subtle-foreground: oklch(0.895 0.12 90);
+    --color-error: oklch(0.685 0.2 24);
+    --color-error-subtle: oklch(0.285 0.09 24);
+    --color-error-subtle-foreground: oklch(0.865 0.11 24);
+    --color-info: oklch(0.72 0.15 263);
+    --color-info-subtle: oklch(0.285 0.09 263);
+    --color-info-subtle-foreground: oklch(0.875 0.1 263);
+    --color-destructive: oklch(0.585 0.2 24);
   }
 }
 
