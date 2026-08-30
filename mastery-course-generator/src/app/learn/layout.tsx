@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Wordmark } from '@/components/Wordmark';
 
 /**
- * Share-link shell for students. No teacher navigation and no sign-in prompt:
+ * Share-link shell for students. No educator navigation and no sign-in prompt:
  * a learner who followed a link is not a customer being sold to.
  */
 export default function LearnLayout({ children }: { children: React.ReactNode }) {

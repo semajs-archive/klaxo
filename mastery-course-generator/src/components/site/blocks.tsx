@@ -66,7 +66,7 @@ export function CTABand({
         </div>
         <Link
           href="/login?mode=signup"
-          className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 px-8 font-display text-base font-bold text-foreground shadow-pop transition-all hover:bg-brand-400 active:translate-y-[3px] active:shadow-none"
+          className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 px-8 font-display text-base font-bold text-on-brand shadow-pop transition-all hover:bg-brand-400 active:translate-y-[3px] active:shadow-none"
         >
           Create an account
         </Link>
@@ -84,7 +84,7 @@ export function NumberedList({
     <ol className="grid gap-5 md:grid-cols-2">
       {items.map((item, index) => (
         <li key={item.title} className="rounded-2xl border-[1.5px] border-ink bg-card p-6 shadow-pop">
-          <span className="grid h-9 w-9 place-items-center rounded-full border-[1.5px] border-ink bg-brand-400 font-display text-sm font-bold">
+          <span className="grid h-9 w-9 place-items-center rounded-full border-[1.5px] border-ink bg-brand-400 font-display text-sm font-bold text-on-brand">
             {index + 1}
           </span>
           <h3 className="mt-5 font-display text-lg font-bold">{item.title}</h3>

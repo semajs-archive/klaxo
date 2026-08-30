@@ -25,7 +25,7 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
           <Link href="/" className="font-semibold hover:text-foreground">
             ← Back to the site
           </Link>
-          <Link href="/for-teachers" className="font-semibold hover:text-foreground">
+          <Link href="/for-educators" className="font-semibold hover:text-foreground">
             What is KLAXO?
           </Link>
         </div>

@@ -14,7 +14,7 @@ const beliefs = [
   },
   {
     title: 'Generated work needs evidence',
-    body: 'Anything the model writes is tied back to the source material it came from, so a teacher can check it rather than take it on faith.',
+    body: 'Anything the model writes is tied back to the source material it came from, so an educator can check it rather than take it on faith.',
   },
   {
     title: 'A wrong course should be fixable',

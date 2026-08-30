@@ -4,7 +4,7 @@ export function Wordmark({ className = '' }: { className?: string }) {
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <span
         aria-hidden="true"
-        className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-foreground"
+        className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-on-brand"
       >
         <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
           <path

@@ -231,7 +231,7 @@ export default function WorkspacePage() {
             className={cn(
               'whitespace-nowrap rounded-full px-4 py-2 font-display text-sm font-bold transition-all',
               activeTab === tab.id
-                ? 'border-[1.5px] border-ink bg-brand-400 text-foreground shadow-pop-sm'
+                ? 'border-[1.5px] border-ink bg-brand-400 text-on-brand shadow-pop-sm'
                 : 'border-[1.5px] border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
             )}
           >

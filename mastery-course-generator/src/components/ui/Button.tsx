@@ -19,7 +19,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variants = {
       primary: `${chunky} bg-primary text-primary-foreground hover:bg-primary-500`,
-      secondary: `${chunky} bg-brand-500 text-foreground hover:bg-brand-400`,
+      secondary: `${chunky} bg-brand-500 text-on-brand hover:bg-brand-400`,
       outline: `${chunky} bg-card text-foreground hover:bg-secondary`,
       ghost: 'hover:bg-secondary hover:text-foreground active:scale-[0.98]',
       destructive: `${chunky} bg-destructive text-destructive-foreground hover:bg-destructive/90`,

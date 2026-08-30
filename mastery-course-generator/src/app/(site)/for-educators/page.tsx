@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { CTABand, FaqList, PageHero, SectionHeading } from '@/components/site/blocks';
 
 export const metadata: Metadata = {
-  title: 'For teachers — KLAXO',
+  title: 'For educators — KLAXO',
   description:
     'What KLAXO does for the person planning the course: structure from your own material, share links for students, mastery per objective.',
 };
@@ -29,7 +29,7 @@ const jobs = [
 const faqs = [
   {
     q: 'Do my students need accounts?',
-    a: 'No. You share a link, they type a name, and they are in the course. Only teachers sign up.',
+    a: 'No. You share a link, they type a name, and they are in the course. Only educators sign up.',
   },
   {
     q: 'Can I edit what it generates?',
@@ -45,11 +45,11 @@ const faqs = [
   },
 ];
 
-export default function ForTeachersPage() {
+export default function ForEducatorsPage() {
   return (
     <div className="space-y-16">
       <PageHero
-        kicker="For teachers"
+        kicker="For educators"
         title="Course planning that starts from"
         highlight="your own material."
         lede="KLAXO is built for the person who already has the sources and the standards, and needs the structure, the practice, and the tracking that normally take a term of evenings."

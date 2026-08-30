@@ -49,8 +49,8 @@ const explore = [
     cta: 'See the pipeline',
   },
   {
-    href: '/for-teachers',
-    title: 'For teachers',
+    href: '/for-educators',
+    title: 'For educators',
     body: 'Share links with no student accounts, mastery per objective, and the questions that come up first.',
     cta: 'What you get',
   },
@@ -104,12 +104,12 @@ export default function HomePage() {
                   <p className="kicker text-[11px]">KLAXO pipeline</p>
                   <p className="mt-1 font-display font-bold">Curriculum health</p>
                 </div>
-                <span className="rounded-lg border border-ink bg-brand-400 px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.08em]">Ready</span>
+                <span className="rounded-lg border border-ink bg-brand-400 px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-on-brand">Ready</span>
               </div>
               <div className="space-y-3 py-4">
                 {['Sources', 'Blueprint', 'Lessons + practice', 'QA + revision'].map((step, index) => (
                   <div key={step} className="flex items-center gap-3 rounded-xl border bg-background p-3">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-brand-400 font-display text-xs font-bold">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-brand-400 font-display text-xs font-bold text-on-brand">
                       {index + 1}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -144,7 +144,7 @@ export default function HomePage() {
           {features.map((feature) => (
             <div key={feature.title} className="group rounded-2xl border-[1.5px] border-ink bg-card p-6 shadow-pop transition-transform duration-200 hover:-translate-y-0.5">
               <div className="flex items-center justify-between">
-                <div className="grid h-11 w-11 place-items-center rounded-xl border-[1.5px] border-ink bg-brand-400 text-foreground">
+                <div className="grid h-11 w-11 place-items-center rounded-xl border-[1.5px] border-ink bg-brand-400 text-on-brand">
                   {feature.icon}
                 </div>
                 <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{feature.eyebrow}</span>
