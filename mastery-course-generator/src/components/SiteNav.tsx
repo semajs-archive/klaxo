@@ -93,7 +93,7 @@ export function AccountMenu() {
     return (
       <Link
         href="/login"
-        className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-1.5 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none"
+        className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-1.5 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 active:translate-y-[2px] active:shadow-none"
       >
         Sign in
       </Link>

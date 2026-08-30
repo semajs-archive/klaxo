@@ -84,7 +84,7 @@ export function NumberedList({
     <ol className="grid gap-5 md:grid-cols-2">
       {items.map((item, index) => (
         <li key={item.title} className="rounded-2xl border-[1.5px] border-ink bg-card p-6 shadow-pop">
-          <span className="grid h-9 w-9 place-items-center rounded-full border-[1.5px] border-ink bg-brand-400 font-display text-sm font-bold text-on-brand">
+          <span className="grid h-9 w-9 place-items-center rounded-full border-[1.5px] border-ink bg-brand-400 font-display text-sm font-bold text-on-brand dark:bg-secondary dark:text-foreground">
             {index + 1}
           </span>
           <h3 className="mt-5 font-display text-lg font-bold">{item.title}</h3>

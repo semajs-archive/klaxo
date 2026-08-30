@@ -40,8 +40,6 @@ export function SiteHeader() {
     };
   }, [pathname]);
 
-  useEffect(() => setOpen(false), [pathname]);
-
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -77,7 +75,7 @@ export function SiteHeader() {
             ) : signedIn ? (
               <Link
                 href="/dashboard"
-                className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-2 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none"
+                className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-2 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 active:translate-y-[2px] active:shadow-none"
               >
                 Go to my courses
               </Link>
@@ -91,7 +89,7 @@ export function SiteHeader() {
                 </Link>
                 <Link
                   href="/login?mode=signup"
-                  className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-2 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 active:translate-y-[2px] active:shadow-none"
+                  className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-2 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 active:translate-y-[2px] active:shadow-none"
                 >
                   Get started
                 </Link>
@@ -128,6 +126,7 @@ export function SiteHeader() {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => setOpen(false)}
                 className="flex min-h-[52px] items-center border-b border-border text-base font-semibold last:border-0"
               >
                 {link.label}
@@ -137,7 +136,7 @@ export function SiteHeader() {
               {signedIn ? (
                 <Link
                   href="/dashboard"
-                  className="flex min-h-[52px] items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 font-display text-base font-bold text-on-brand shadow-pop-sm"
+                  className="flex min-h-[52px] items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 font-display text-base font-bold text-on-brand shadow-pop-sm dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
                 >
                   Go to my courses
                 </Link>
@@ -145,7 +144,7 @@ export function SiteHeader() {
                 <>
                   <Link
                     href="/login?mode=signup"
-                    className="flex min-h-[52px] items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 font-display text-base font-bold text-on-brand shadow-pop-sm"
+                    className="flex min-h-[52px] items-center justify-center rounded-xl border-[1.5px] border-ink bg-brand-500 font-display text-base font-bold text-on-brand shadow-pop-sm dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
                   >
                     Get started
                   </Link>

@@ -47,85 +47,88 @@
 }
 
 /*
-  Dark mode follows the reader's device setting — no toggle, no stored choice.
+  Dark mode — "slate and chalk". Follows the device setting; no toggle.
 
-  Daylight KLAXO is ink on warm paper, with cobalt for the engineered moments
-  and klaxon yellow for the loud ones. At night that warm paper grey turned
-  out to fight the cobalt: warm brown-grey under a cold blue never settles,
-  and the yellow sat on top of the argument.
+  Daylight KLAXO is ink on warm paper with two accents: cobalt for the
+  engineered moments, klaxon yellow for the loud ones. Carrying both onto a
+  dark ground is what made the earlier attempts feel mismatched — a warm grey
+  under a cold blue never settles, and the yellow ended up on top of that
+  argument.
 
-  So night is the blueprint instead of the paper. The ground is deep ink navy
-  carrying the same hue as the cobalt, which means the blue now belongs to the
-  page rather than being dropped onto it, and every surface steps up in that
-  one hue. Yellow is the only warm thing left, so it reads as the signal it is
-  meant to be.
+  Night takes one position and holds it: a single cool slate family from the
+  ground all the way up to the controls, which are chalk. That leaves yellow
+  as the only colour decision on screen, so it is spent once per view — the
+  highlighter on a headline, the step you are actually on, the button inside
+  the call-to-action — and reads as a signal rather than decoration.
 
-  Two things that do NOT invert:
-  - the drawn line and its offset shadow. Flip them literally and both go
-    white, and every card becomes a glowing sticker outline. The line recedes
-    to a quiet blue-grey; the shadow goes DARKER than the page, keeping the
-    printed feel without the glow.
-  - klaxon yellow. It reads on both grounds, so anything sitting on it keeps
-    dark ink.
+  Two things never invert:
+  - the drawn line and its offset shadow. Flipped literally, both go white and
+    every card becomes a glowing sticker outline. The line recedes to a quiet
+    slate; the shadow goes DARKER than the page, keeping the printed feel.
+  - klaxon yellow itself. It reads on either ground, so whatever sits on it
+    keeps dark ink.
 */
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Ink navy ground; each surface a step up, all on the cobalt hue. */
-    --color-background: oklch(0.168 0.024 265);
-    --color-card: oklch(0.216 0.028 265);
-    --color-popover: oklch(0.246 0.03 265);
-    --color-secondary: oklch(0.285 0.032 265);
-    --color-muted: oklch(0.268 0.03 265);
+    /* Cool slate ground; every surface a step up in the same family. */
+    --color-background: oklch(0.192 0.014 256);
+    --color-card: oklch(0.245 0.016 256);
+    --color-popover: oklch(0.272 0.017 256);
+    --color-secondary: oklch(0.318 0.019 255);
+    --color-muted: oklch(0.29 0.018 255);
 
-    /* Off-white with a trace of the same blue — never pure white. */
-    --color-foreground: oklch(0.955 0.006 258);
-    --color-card-foreground: oklch(0.955 0.006 258);
-    --color-popover-foreground: oklch(0.955 0.006 258);
-    --color-secondary-foreground: oklch(0.955 0.006 258);
-    --color-muted-foreground: oklch(0.735 0.022 262);
+    /* Chalk. Never pure white — pure white vibrates against slate. */
+    --color-foreground: oklch(0.955 0.006 250);
+    --color-card-foreground: oklch(0.955 0.006 250);
+    --color-popover-foreground: oklch(0.955 0.006 250);
+    --color-secondary-foreground: oklch(0.955 0.006 250);
+    --color-muted-foreground: oklch(0.715 0.022 252);
 
-    --color-border: oklch(0.312 0.034 265);
-    --color-input: oklch(0.365 0.036 265);
+    --color-border: oklch(0.285 0.017 256);
+    --color-input: oklch(0.355 0.02 255);
 
     /* The drawn line and the blueprint grid: present, not shouting. */
-    --color-ink: oklch(0.425 0.042 265);
-    --color-grid-line: oklch(0.415 0.045 265);
+    --color-ink: oklch(0.388 0.021 254);
+    --color-grid-line: oklch(0.375 0.02 254);
 
     /* The signature offset shadow, pressed into the page rather than lit. */
-    --shadow-pop: 0 3px 0 0 oklch(0.1 0.022 265);
-    --shadow-pop-sm: 0 2px 0 0 oklch(0.1 0.022 265);
-    --shadow-pop-lg: 0 4px 0 0 oklch(0.1 0.022 265);
-    --shadow-sm: 0 1px 2px 0 oklch(0.08 0.02 265 / 0.5);
-    --shadow-md: 0 2px 8px -1px oklch(0.08 0.02 265 / 0.55);
-    --shadow-lg: 0 10px 22px -4px oklch(0.08 0.02 265 / 0.6);
-    --shadow-xl: 0 18px 34px -6px oklch(0.08 0.02 265 / 0.65);
+    --shadow-pop: 0 3px 0 0 oklch(0.13 0.012 256);
+    --shadow-pop-sm: 0 2px 0 0 oklch(0.13 0.012 256);
+    --shadow-pop-lg: 0 4px 0 0 oklch(0.13 0.012 256);
+    --shadow-sm: 0 1px 2px 0 oklch(0.1 0.01 256 / 0.5);
+    --shadow-md: 0 2px 8px -1px oklch(0.1 0.01 256 / 0.55);
+    --shadow-lg: 0 10px 22px -4px oklch(0.1 0.01 256 / 0.6);
+    --shadow-xl: 0 18px 34px -6px oklch(0.1 0.01 256 / 0.65);
 
-    /* Cobalt lifts above its own ground rather than washing out on it. */
-    --color-primary: oklch(0.585 0.208 264);
-    --color-primary-foreground: oklch(0.99 0 0);
-    --color-ring: oklch(0.72 0.15 263);
+    /* Controls are chalk: the strongest thing on the page is the thing you
+       are meant to press. Cobalt sits this one out. */
+    --color-primary: oklch(0.955 0.006 250);
+    --color-primary-foreground: oklch(0.2 0.016 256);
+    --color-ring: oklch(0.8 0.03 250);
 
-    /* Yellow stays yellow. A yellow tint has to go deep amber, and against
-       navy that warmth is the whole point. */
-    --color-brand-surface: oklch(0.305 0.075 88);
+    /* Small-caps labels lift off the slate as steel, not as blue. */
+    --color-kicker: oklch(0.75 0.032 252);
+
+    /* The "recommended" card is a lifted slate, not a yellow tint — the
+       recommendation is carried by its button. */
+    --color-brand-surface: oklch(0.3 0.018 255);
     --color-marker: var(--color-brand-400);
-    --color-kicker: oklch(0.795 0.12 262);
 
-    /* Status chips: tint the ground, lift the text — the reverse of daylight. */
-    --color-success: oklch(0.74 0.16 158);
-    --color-success-subtle: oklch(0.275 0.055 158);
-    --color-success-subtle-foreground: oklch(0.88 0.13 158);
+    /* Status stays readable without introducing a second accent family. */
+    --color-success: oklch(0.76 0.13 158);
+    --color-success-subtle: oklch(0.29 0.05 158);
+    --color-success-subtle-foreground: oklch(0.88 0.12 158);
     --color-warning: var(--color-brand-400);
     --color-warning-foreground: var(--color-neutral-950);
-    --color-warning-subtle: oklch(0.295 0.065 88);
+    --color-warning-subtle: oklch(0.3 0.06 88);
     --color-warning-subtle-foreground: oklch(0.895 0.12 90);
-    --color-error: oklch(0.685 0.2 24);
-    --color-error-subtle: oklch(0.285 0.09 24);
-    --color-error-subtle-foreground: oklch(0.865 0.11 24);
-    --color-info: oklch(0.72 0.15 263);
-    --color-info-subtle: oklch(0.285 0.09 263);
-    --color-info-subtle-foreground: oklch(0.875 0.1 263);
-    --color-destructive: oklch(0.585 0.2 24);
+    --color-error: oklch(0.7 0.18 24);
+    --color-error-subtle: oklch(0.3 0.08 24);
+    --color-error-subtle-foreground: oklch(0.87 0.1 24);
+    --color-info: oklch(0.78 0.04 250);
+    --color-info-subtle: oklch(0.3 0.025 252);
+    --color-info-subtle-foreground: oklch(0.88 0.03 250);
+    --color-destructive: oklch(0.6 0.18 24);
   }
 }
 
