@@ -70,6 +70,8 @@ KLAXO takes messy educational inputs (syllabus photos, PDFs, lecture notes, text
 - **Quality assurance** — automated checks with targeted revision loops
 - **Versioning** — immutable published versions with restore/compare
 - **Interactive workspace** — lessons, practice, assessments, mastery in one view
+- **Accounts** — email/password sign-in for course authors; guest sessions upgrade in place
+- **Share links** — invite learners with a link; they join with just a name and their practice + mastery is tracked per learner
 
 ---
 
@@ -92,8 +94,18 @@ KLAXO takes messy educational inputs (syllabus photos, PDFs, lecture notes, text
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - npm 10+
+
+### AI providers
+
+The app talks to any OpenAI-compatible endpoint, configured entirely through
+`.env` (`FCC_SERVER_BASE_URL`, `FCC_SERVER_API_KEY`, and the model names):
+
+- **NVIDIA API** (default config) — `https://integrate.api.nvidia.com/v1`.
+- **Cloudflare Workers AI** — free daily allowance, good for zero-budget
+  deployments. See the commented block in `.env.example` for the exact values.
+- **Dev mode** (`AI_DEV_MODE=true`) — canned responses, no network calls.
 
 ### Installation
 

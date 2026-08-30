@@ -32,6 +32,8 @@ const {
   generationJobs,
   generationEvents,
   userEdits,
+  courseShares,
+  courseEnrollments,
 } = schema;
 
 
@@ -41,13 +43,21 @@ export function getUserByEmail(email: string) {
   return getDb().select().from(users).where(eq(users.email, email)).get();
 }
 
-export function createUser(input: { id: string; email: string; displayName?: string }) {
+export function createUser(input: {
+  id: string;
+  email: string;
+  displayName?: string;
+  passwordHash?: string;
+  role?: string;
+}) {
   return getDb()
     .insert(users)
     .values({
       id: input.id,
       email: input.email,
       displayName: input.displayName ?? null,
+      passwordHash: input.passwordHash ?? null,
+      role: input.role ?? 'teacher',
     })
     .returning()
     .get();
@@ -55,6 +65,79 @@ export function createUser(input: { id: string; email: string; displayName?: str
 
 export function getUserById(id: string) {
   return getDb().select().from(users).where(eq(users.id, id)).get();
+}
+
+export function updateUserAccount(
+  id: string,
+  data: Partial<{ email: string; displayName: string; passwordHash: string; role: string }>,
+) {
+  return getDb().update(users).set(data).where(eq(users.id, id)).returning().get();
+}
+
+/* ------------------------------------------------------------ sharing ---- */
+
+export function createCourseShare(input: { id: string; courseId: string; token: string }) {
+  return getDb()
+    .insert(courseShares)
+    .values({ id: input.id, courseId: input.courseId, token: input.token })
+    .returning()
+    .get();
+}
+
+export function getActiveShareForCourse(courseId: string) {
+  return getDb()
+    .select()
+    .from(courseShares)
+    .where(eq(courseShares.courseId, courseId))
+    .orderBy(desc(courseShares.createdAt))
+    .all()
+    .find((s) => s.revokedAt == null);
+}
+
+export function getShareByToken(token: string) {
+  return getDb().select().from(courseShares).where(eq(courseShares.token, token)).get();
+}
+
+export function revokeShare(id: string) {
+  return getDb()
+    .update(courseShares)
+    .set({ revokedAt: Date.now() })
+    .where(eq(courseShares.id, id))
+    .returning()
+    .get();
+}
+
+export function createEnrollment(input: {
+  id: string;
+  courseId: string;
+  userId: string;
+  shareId: string;
+}) {
+  return getDb().insert(courseEnrollments).values(input).returning().get();
+}
+
+export function getEnrollment(courseId: string, userId: string) {
+  return getDb()
+    .select()
+    .from(courseEnrollments)
+    .where(and(eq(courseEnrollments.courseId, courseId), eq(courseEnrollments.userId, userId)))
+    .get();
+}
+
+/** Learners enrolled in a course, with their display names. */
+export function listEnrollments(courseId: string) {
+  return getDb()
+    .select({
+      id: courseEnrollments.id,
+      userId: courseEnrollments.userId,
+      joinedAt: courseEnrollments.joinedAt,
+      displayName: users.displayName,
+    })
+    .from(courseEnrollments)
+    .innerJoin(users, eq(users.id, courseEnrollments.userId))
+    .where(eq(courseEnrollments.courseId, courseId))
+    .orderBy(asc(courseEnrollments.joinedAt))
+    .all();
 }
 
 /* ------------------------------------------------------------ courses ---- */

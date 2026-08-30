@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { cn } from '@/lib/cn';
 import QuestionCard from '@/components/workspace/QuestionCard';
 import LessonReader from '@/components/workspace/LessonReader';
+import SharePanel from '@/components/workspace/SharePanel';
 import type {
   Assessment,
   Course,
@@ -80,6 +81,7 @@ export default function WorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [access, setAccess] = useState<'owner' | 'learner'>('owner');
 
   const load = useCallback(async () => {
     try {
@@ -95,6 +97,7 @@ export default function WorkspacePage() {
       }
       const courseData = await courseRes.json();
       setCourse(courseData.course as Course);
+      setAccess(courseData.access === 'learner' ? 'learner' : 'owner');
 
       if (workspaceRes.ok) {
         const ws = await workspaceRes.json();
@@ -190,18 +193,29 @@ export default function WorkspacePage() {
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6">
-        <Link
-          href="/dashboard"
-          className="mb-3 inline-block font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
-        >
-          ← Back to Dashboard
-        </Link>
+        {access === 'owner' && (
+          <Link
+            href="/dashboard"
+            className="mb-3 inline-block font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+          >
+            ← Back to Dashboard
+          </Link>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold">{course.title}</h1>
-          <Badge variant="outline" dot>
-            {course.status}
-          </Badge>
-          <Badge variant="secondary">{course.stage}</Badge>
+          {access === 'owner' && (
+            <>
+              <Badge variant="outline" dot>
+                {course.status}
+              </Badge>
+              <Badge variant="secondary">{course.stage}</Badge>
+            </>
+          )}
+          {access === 'owner' && (
+            <div className="ml-auto">
+              <SharePanel courseId={courseId} />
+            </div>
+          )}
         </div>
         <p className="mt-1 text-muted-foreground">
           {course.description || 'No description'}
@@ -209,7 +223,7 @@ export default function WorkspacePage() {
       </div>
 
       <div className="mb-6 flex gap-2 overflow-x-auto pb-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS.map((tab) => (
+        {TABS.filter((tab) => access === 'owner' || tab.id !== 'versions').map((tab) => (
           <button
             key={tab.id}
             type="button"

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUserId } from '@/lib/auth';
+import { requireCourseAccess } from '@/lib/course-access';
 import { getDb } from '@/db';
 import { courses } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -36,15 +37,10 @@ export async function GET(
     const userId = await requireUserId();
     const { id } = await params;
 
-    const course = getCourse(id);
-    if (!course) throw notFound('Course not found');
+    // Learners enrolled through a share link may read the course too.
+    const { course, access } = requireCourseAccess(id, userId, 'learner');
 
-    // Authorization check
-    if (course.userId !== userId) {
-      throw notFound('Course not found');
-    }
-
-    return NextResponse.json({ course });
+    return NextResponse.json({ course, access });
   } catch (err) {
     const appErr = toAppError(err);
     return NextResponse.json(

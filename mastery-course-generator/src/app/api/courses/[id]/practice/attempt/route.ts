@@ -7,8 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUserId } from '@/lib/auth';
-import { getCourse } from '@/db/repo';
-import { notFound, toAppError } from '@/lib/errors';
+import { requireCourseAccess } from '@/lib/course-access';
+import { toAppError } from '@/lib/errors';
 import { recordAttempt } from '@/services/mastery';
 
 const AttemptSchema = z.object({
@@ -26,9 +26,8 @@ export async function POST(
     const userId = await requireUserId();
     const { id } = await params;
 
-    const course = getCourse(id);
-    if (!course) throw notFound('Course not found');
-    if (course.userId !== userId) throw notFound('Course not found');
+    // Learners record attempts under their own user id.
+    requireCourseAccess(id, userId, 'learner');
 
     const body = await req.json().catch(() => null);
     const parsed = AttemptSchema.safeParse(body ?? {});

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import { Bricolage_Grotesque, Inter, Spline_Sans_Mono } from 'next/font/google';
-import { HeaderNav, BottomNav } from '@/components/SiteNav';
+import { HeaderNav, BottomNav, AccountMenu } from '@/components/SiteNav';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -69,7 +69,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             >
               <Wordmark />
             </Link>
-            <HeaderNav />
+            <div className="flex items-center gap-3">
+              <HeaderNav />
+              <AccountMenu />
+            </div>
           </div>
         </header>
         <main className="relative mx-auto w-full max-w-6xl px-4 py-8 pb-24 sm:px-6 sm:pb-10 lg:px-8 lg:py-10">
