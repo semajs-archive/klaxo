@@ -30,7 +30,7 @@ export default function StudentsPage() {
       <PageHero
         eyebrow="Students"
         title="One link, and they are in."
-        lede="The fastest way to lose a class is to make thirty people create accounts. Only you sign up."
+        lede="Hand out a link and they type a name. Nobody creates an account, including you."
       />
 
       <Band>
@@ -79,7 +79,7 @@ export default function StudentsPage() {
             </h2>
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink href={START_HREF} variant="on-band">
-                Start a course — free
+                Start studying
               </ButtonLink>
               <ButtonLink href="/what-it-costs" variant="on-band-ghost">
                 What it costs

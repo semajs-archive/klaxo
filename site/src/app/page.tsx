@@ -2,7 +2,7 @@ import { SpineDiagram } from '@/components/SpineDiagram';
 import { Reveal } from '@/components/Reveal';
 import { BeforeAfter, JoinPhone, MasteryGrid, ProvenanceCard } from '@/components/showcase';
 import { Band, ButtonLink, SectionHead, Wrap } from '@/components/ui';
-import { SIGN_IN_HREF, START_HREF } from '@/lib/cn';
+import { START_HREF } from '@/lib/cn';
 
 const PASSES = [
   { title: 'Reads it', body: 'Whatever you hand over, as it is.' },
@@ -47,13 +47,13 @@ export default function HomePage() {
               </Reveal>
               <Reveal delay={160}>
                 <div className="mt-7 flex flex-wrap gap-3">
-                  <ButtonLink href={START_HREF}>Start a course — free</ButtonLink>
+                  <ButtonLink href={START_HREF}>Start studying</ButtonLink>
                   <ButtonLink href="/how-it-builds" variant="ghost">
                     See how it builds
                   </ButtonLink>
                 </div>
                 <p className="mt-3 text-[0.8125rem] text-ink-3">
-                  No account needed. Sign up later to keep it.
+                  No sign-up, no login. It opens straight onto your material.
                 </p>
               </Reveal>
             </div>
@@ -175,10 +175,7 @@ export default function HomePage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink href={START_HREF} variant="on-band">
-                Start a course — free
-              </ButtonLink>
-              <ButtonLink href={SIGN_IN_HREF} variant="on-band-ghost">
-                Sign in
+                Start studying
               </ButtonLink>
             </div>
           </Reveal>

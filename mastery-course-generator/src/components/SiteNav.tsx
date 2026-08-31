@@ -1,59 +1,71 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
 
 /**
- * In-app navigation only. The public marketing site has its own header, so
- * nothing here links back out to it except sign-out.
+ * In-app navigation.
+ *
+ * There is no account menu and no sign-in: one person uses this, and it opens
+ * straight into their material. Two places to be — what you are revising, and
+ * everything you have built.
  */
-const links = [{ href: '/dashboard', label: 'My courses' }];
-
-function CoursesIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
-      <path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z" />
-      <path d="M4 19a2 2 0 0 0 2 2h13" />
-    </svg>
-  );
-}
-
-function AccountIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21a8 8 0 0 1 16 0" />
-    </svg>
-  );
-}
-
-/**
- * The phone's bottom bar. Two destinations, because one tab is not navigation
- * — it is a label taking up the most reachable strip of the screen.
- */
-const bottomLinks: { href: string; label: string; Icon: () => React.ReactElement }[] = [
-  { href: '/dashboard', label: 'My courses', Icon: CoursesIcon },
-  { href: '/account', label: 'Account', Icon: AccountIcon },
+const links = [
+  { href: '/study', label: 'Study', Icon: StudyIcon },
+  { href: '/dashboard', label: 'Material', Icon: MaterialIcon },
 ];
 
 function isActive(pathname: string, href: string) {
-  return pathname.startsWith(href);
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function StudyIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 5.5C10.5 4.2 8.6 3.6 6 3.6c-.9 0-1.6.7-1.6 1.6v11c0 .9.7 1.6 1.6 1.6 2.6 0 4.5.6 6 1.9 1.5-1.3 3.4-1.9 6-1.9.9 0 1.6-.7 1.6-1.6v-11c0-.9-.7-1.6-1.6-1.6-2.6 0-4.5.6-6 1.9Z" />
+      <path d="M12 5.5v14.2" />
+    </svg>
+  );
+}
+
+function MaterialIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h4l1.6 2H18a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 18 18H5.5A1.5 1.5 0 0 1 4 16.5Z" />
+    </svg>
+  );
 }
 
 export function HeaderNav() {
   const pathname = usePathname();
-  const me = useMe();
-  if (me?.role === 'student') return null;
   return (
     <nav aria-label="Primary" className="hidden items-center gap-1.5 sm:flex">
       {links.map((link) => (
         <Link
           key={link.href}
           href={link.href}
+          aria-current={isActive(pathname, link.href) ? 'page' : undefined}
           className={cn(
-            'rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+            'flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition-colors',
             isActive(pathname, link.href)
               ? 'bg-secondary text-foreground'
               : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
@@ -66,144 +78,28 @@ export function HeaderNav() {
   );
 }
 
-interface Me {
-  id: string;
-  email: string;
-  displayName: string | null;
-  role: string;
-  isGuest: boolean;
-}
-
-/** `undefined` while loading, `null` when signed out. */
-function useMe(): Me | null | undefined {
-  const pathname = usePathname();
-  const [me, setMe] = useState<Me | null | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) setMe(data.user ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setMe(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname]);
-
-  return me;
-}
-
-export function AccountMenu() {
-  const router = useRouter();
-  const loaded = useMe();
-  const [signedOut, setSignedOut] = useState(false);
-  const me = signedOut ? null : loaded;
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
-
-  if (me === undefined) return <div className="h-9 w-20" aria-hidden="true" />;
-
-  if (!me || me.isGuest) {
-    return (
-      <Link
-        href="/login"
-        className="inline-flex min-h-11 items-center rounded-full border border-transparent bg-primary px-4 py-1.5 font-display text-sm font-semibold text-primary-foreground shadow-sm transition-all ease-standard hover:bg-primary-500 active:translate-y-px active:shadow-none sm:min-h-0"
-      >
-        Sign in
-      </Link>
-    );
-  }
-
-  const name = me.displayName || me.email.split('@')[0];
-
-  if (me.role === 'student') {
-    return (
-      <span className="rounded-full bg-secondary px-4 py-2 text-sm font-semibold">{name}</span>
-    );
-  }
-
-  return (
-    <div className="relative" ref={menuRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold hover:bg-secondary/70 sm:min-h-0"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        {name}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3.5 w-3.5" aria-hidden="true">
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
-        >
-          <div className="border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
-            {me.email}
-          </div>
-          <button
-            type="button"
-            role="menuitem"
-            className="min-h-11 w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-secondary"
-            onClick={async () => {
-              await fetch('/api/auth/logout', { method: 'POST' });
-              setOpen(false);
-              setSignedOut(true);
-              router.push('/login');
-              router.refresh();
-            }}
-          >
-            Sign out
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function BottomNav() {
   const pathname = usePathname();
-  const me = useMe();
-  if (me?.role === 'student') return null;
   return (
     <nav
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] sm:hidden"
     >
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: `repeat(${bottomLinks.length}, minmax(0, 1fr))` }}
-      >
-        {bottomLinks.map(({ href, label, Icon }) => {
-          const active = isActive(pathname, href);
+      <div className="grid grid-cols-2">
+        {links.map((link) => {
+          const active = isActive(pathname, link.href);
           return (
             <Link
-              key={href}
-              href={href}
+              key={link.href}
+              href={link.href}
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-semibold',
-                active ? 'text-foreground' : 'text-muted-foreground',
+                active ? 'text-primary' : 'text-muted-foreground',
               )}
             >
-              <Icon />
-              <span className={cn(active && 'border-b-2 border-primary')}>{label}</span>
+              <link.Icon className="h-5 w-5" />
+              <span>{link.label}</span>
             </Link>
           );
         })}

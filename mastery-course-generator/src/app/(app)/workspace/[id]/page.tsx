@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -18,7 +18,6 @@ import { Textarea } from '@/components/ui/Textarea';
 import { cn } from '@/lib/cn';
 import QuestionCard from '@/components/workspace/QuestionCard';
 import LessonReader from '@/components/workspace/LessonReader';
-import SharePanel from '@/components/workspace/SharePanel';
 import type {
   Assessment,
   Course,
@@ -71,16 +70,36 @@ const EMPTY_WORKSPACE: WorkspaceData = {
   questions: [],
 };
 
+/**
+ * `?tab=practice` lets the Study screen drop someone straight into a drill
+ * rather than making them land on Overview and hunt for the tab.
+ */
+function isTabId(value: string | null): value is TabId {
+  return TABS.some((tab) => tab.id === value);
+}
+
 export default function WorkspacePage() {
+  return (
+    <Suspense>
+      <Workspace />
+    </Suspense>
+  );
+}
+
+function Workspace() {
   const params = useParams();
+  const search = useSearchParams();
   const courseId = params.id as string;
+  const requestedTab = search.get('tab');
 
   const [course, setCourse] = useState<Course | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceData>(EMPTY_WORKSPACE);
   const [mastery, setMastery] = useState<MasteryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    isTabId(requestedTab) ? requestedTab : 'overview',
+  );
   const [access, setAccess] = useState<'owner' | 'learner'>('owner');
 
   const load = useCallback(async () => {
@@ -213,7 +232,6 @@ export default function WorkspacePage() {
           )}
           {access === 'owner' && (
             <div className="ml-auto">
-              <SharePanel courseId={courseId} />
             </div>
           )}
         </div>

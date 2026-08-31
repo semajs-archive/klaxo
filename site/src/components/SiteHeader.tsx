@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ButtonLink, Wrap } from '@/components/ui';
 import { Wordmark } from '@/components/Wordmark';
-import { cn, SIGN_IN_HREF, START_HREF } from '@/lib/cn';
+import { cn, START_HREF } from '@/lib/cn';
 import { NAV } from '@/lib/nav';
 
 export function SiteHeader() {
@@ -65,12 +65,9 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5">
-          <div className="hidden items-center gap-2.5 sm:flex">
-            <ButtonLink href={SIGN_IN_HREF} variant="quiet" size="sm">
-              Sign in
-            </ButtonLink>
+          <div className="hidden items-center sm:flex">
             <ButtonLink href={START_HREF} size="sm">
-              Start a course
+              Open KLAXO
             </ButtonLink>
           </div>
 
@@ -108,10 +105,9 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
-              <div className="flex flex-col gap-2.5 py-4">
-                <ButtonLink href={START_HREF}>Start a course</ButtonLink>
-                <ButtonLink href={SIGN_IN_HREF} variant="ghost">
-                  Sign in
+              <div className="py-4">
+                <ButtonLink href={START_HREF} className="w-full">
+                  Open KLAXO
                 </ButtonLink>
               </div>
             </Wrap>

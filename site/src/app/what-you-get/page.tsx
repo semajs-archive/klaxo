@@ -97,7 +97,7 @@ export default function WhatYouGetPage() {
             </h2>
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink href={START_HREF} variant="on-band">
-                Start a course — free
+                Start studying
               </ButtonLink>
               <ButtonLink href="/students" variant="on-band-ghost">
                 Sharing with a class

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 const INCLUDED = [
   'As many courses as you want to build',
-  'Share links for a whole class, with no student accounts',
+  'No account, no login, nothing to set up',
   'Mastery tracked per objective',
   'Every version of every course kept',
 ];
@@ -57,10 +57,10 @@ export default function WhatItCostsPage() {
             </ul>
             <div className="mt-8">
               <ButtonLink href={START_HREF} className="w-full">
-                Start a course
+                Start studying
               </ButtonLink>
               <p className="mt-3 text-[0.8125rem] text-ink-3">
-                No account needed. Sign up later to keep it.
+                No sign-up, no login.
               </p>
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function WhatItCostsPage() {
             </h2>
             <div className="mt-8">
               <ButtonLink href={START_HREF} variant="on-band">
-                Start a course — free
+                Start studying
               </ButtonLink>
             </div>
           </Reveal>

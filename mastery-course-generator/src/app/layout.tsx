@@ -18,9 +18,9 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: 'KLAXO — Curriculum Engineering',
+  title: 'KLAXO — study from your own material',
   description:
-    'KLAXO transforms messy educational material into structured, grounded, mastery-oriented courses.',
+    'Turns the notes, slides and chapters you revise from into a course with practice, and tracks what you actually know.',
 };
 
 export const viewport: Viewport = {
