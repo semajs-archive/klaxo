@@ -11,8 +11,9 @@ npm install
 npm run dev      # http://localhost:3200
 ```
 
-The app itself runs separately (port 3101 in development). Every "Sign in" and
-"Open KLAXO" link points at it.
+The app runs separately (port 3101 in development). "Start a course" points at
+the app's `/start`, which opens the builder as a guest — no signup — and "Sign
+in" points at its login page.
 
 ## Building
 
@@ -23,8 +24,8 @@ npm run build    # static files land in out/
 `out/` is the whole site. Upload it, or point a static host at this directory
 with `npm run build` as the build command and `out` as the output directory.
 
-Set `NEXT_PUBLIC_APP_URL` at build time so the sign-in links point at the real
-app rather than at localhost:
+Set `NEXT_PUBLIC_APP_URL` at build time so the links into the product point at
+the real app rather than at localhost:
 
 ```bash
 NEXT_PUBLIC_APP_URL=https://app.example.com npm run build
@@ -42,5 +43,9 @@ Motion is deliberately narrow: one easing (`cubic-bezier(.16,1,.3,1)`), one
 distance, a fade-and-rise on page change, and the beam in the hero diagram.
 Everything respects `prefers-reduced-motion`.
 
+The mark is "The Citation": lines of a course with one tracing out to the source
+it came from, which is the claim the site leads with.
+
 `src/components/AnimatedBeam.tsx` is adapted from Magic UI's `animated-beam`
-(21st.dev, @dillionverma).
+(21st.dev, @dillionverma), anchored to card edges rather than centres so a line
+never crosses the words.

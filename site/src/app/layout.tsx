@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Newsreader, Schibsted_Grotesk } from 'next/font/google';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
+import { ScrollToTop } from '@/components/ScrollToTop';
+import { MobileActionBar } from '@/components/MobileActionBar';
 import './globals.css';
 
 const schibsted = Schibsted_Grotesk({
@@ -19,11 +21,11 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   title: {
-    default: 'KLAXO — the course you already teach, laid out in order',
+    default: 'KLAXO — a course you can check, line by line',
     template: '%s — KLAXO',
   },
   description:
-    'KLAXO turns the material you already teach from into a structured course: units, measurable objectives, lessons, practice and assessment, with mastery tracked per objective.',
+    'KLAXO builds a course from the material you already teach from, and keeps every line tied to the page it came from.',
 };
 
 export const viewport: Viewport = {
@@ -37,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${schibsted.variable} ${newsreader.variable}`}>
       <body className="flex min-h-screen flex-col">
+        <ScrollToTop />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-[8px] focus:bg-ink focus:px-4 focus:py-2 focus:text-white"
@@ -48,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <SiteFooter />
+        <MobileActionBar />
       </body>
     </html>
   );

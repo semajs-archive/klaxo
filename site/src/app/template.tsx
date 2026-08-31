@@ -1,15 +1,18 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
 import type { ReactNode } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 
 /**
  * Page transitions.
  *
- * `template.tsx` remounts on every navigation, which is what makes this fire
- * on each route change. It is an enter-only transition on purpose: an exit
- * animation would hold the old page on screen while the new one is already
- * ready, which reads as lag rather than polish.
+ * `template.tsx` remounts on every navigation, which is what makes the enter
+ * animation fire per route. Scroll position is handled by `ScrollToTop` in the
+ * layout rather than here: this component cannot tell a first render from a
+ * route change, because its own state resets on both.
+ *
+ * Enter-only on purpose. An exit animation holds the old page on screen after
+ * the new one is ready, which reads as lag rather than polish.
  */
 export default function Template({ children }: { children: ReactNode }) {
   const reduceMotion = useReducedMotion();
