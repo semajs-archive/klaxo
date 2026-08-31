@@ -10,6 +10,20 @@ whoever owns them, and they must never be committed, so `.env` is ignored by
 git. You need your own. It takes about five minutes and the first option below
 costs nothing.
 
+## The quick way
+
+```bash
+cd mastery-course-generator
+npm run ai:setup
+```
+
+It asks which provider, then for your key — which is not echoed to the screen,
+not written to your shell history, and goes straight into `.env`. Then run the
+check at the bottom of this page.
+
+The rest of this page is what that script is doing, in case you would rather
+do it by hand or use a provider it does not list.
+
 ## What you are actually configuring
 
 Three values, whoever you use:
