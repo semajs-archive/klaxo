@@ -242,7 +242,7 @@ export default function QuestionCard({
                   type="button"
                   onClick={() => toggleOrder(item)}
                   className={cn(
-                    'rounded-md border px-3 py-1.5 text-xs transition-colors',
+                    'min-h-11 rounded-md border px-3 py-1.5 text-xs transition-colors sm:min-h-0',
                     selected
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border hover:border-primary/40',

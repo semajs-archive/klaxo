@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
@@ -196,7 +196,7 @@ export default function WorkspacePage() {
         {access === 'owner' && (
           <Link
             href="/dashboard"
-            className="mb-3 inline-block font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+            className="mb-1 -ml-1 inline-flex min-h-11 items-center px-1 font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
           >
             ← Back to Dashboard
           </Link>
@@ -222,23 +222,11 @@ export default function WorkspacePage() {
         </p>
       </div>
 
-      <div className="mb-6 flex gap-2 overflow-x-auto pb-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS.filter((tab) => access === 'owner' || tab.id !== 'versions').map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'whitespace-nowrap rounded-full px-4 py-2 font-display text-sm font-semibold transition-all ease-standard',
-              activeTab === tab.id
-                ? 'border border-transparent bg-primary text-primary-foreground shadow-sm'
-                : 'border border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabStrip
+        tabs={TABS.filter((tab) => access === 'owner' || tab.id !== 'versions')}
+        activeTab={activeTab}
+        onSelect={setActiveTab}
+      />
 
       <div>
         {activeTab === 'overview' && (
@@ -267,6 +255,102 @@ export default function WorkspacePage() {
           <VersionsTab courseId={courseId} onWorkspaceChanged={() => void load()} />
         )}
       </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------- Tab strip ---- */
+
+/**
+ * Seven tabs do not fit a 390px screen, so on a phone they become a strip you
+ * swipe. It snaps, hides its scrollbar, keeps the selected tab in view (on
+ * load and on every change), and fades whichever edge still has more tabs
+ * behind it so it reads as scrollable rather than clipped.
+ */
+function TabStrip({
+  tabs,
+  activeTab,
+  onSelect,
+}: {
+  tabs: { id: TabId; label: string }[];
+  activeTab: TabId;
+  onSelect: (id: TabId) => void;
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  const updateEdges = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setEdges({ start: el.scrollLeft > 2, end: el.scrollLeft < max - 2 });
+  }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    updateEdges();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(updateEdges);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [updateEdges, tabs.length]);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const button = scroller?.querySelector<HTMLElement>(`[data-tab="${activeTab}"]`);
+    if (!scroller || !button) return;
+    // Centre the selected tab. Done by hand rather than with scrollIntoView so
+    // it can never drag the whole page up or down as a side effect, and
+    // instantly rather than smoothly — a snapping container swallows a smooth
+    // programmatic scroll, which left the strip where it was.
+    const left = button.offsetLeft - (scroller.clientWidth - button.offsetWidth) / 2;
+    scroller.scrollTo({ left: Math.max(0, left), behavior: 'auto' });
+    updateEdges();
+  }, [activeTab, updateEdges]);
+
+  return (
+    <div className="relative mb-6">
+      <div
+        ref={scrollerRef}
+        onScroll={updateEdges}
+        role="tablist"
+        aria-label="Course sections"
+        className="relative flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-1 pb-1.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:snap-none [&::-webkit-scrollbar]:hidden"
+      >
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            data-tab={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            onClick={() => onSelect(tab.id)}
+            className={cn(
+              'min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full px-4 py-2 font-display text-sm font-semibold transition-all ease-standard',
+              activeTab === tab.id
+                ? 'border border-transparent bg-primary text-primary-foreground shadow-sm'
+                : 'border border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-background to-transparent transition-opacity duration-200',
+          edges.start ? 'opacity-100' : 'opacity-0',
+        )}
+      />
+      <div
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent transition-opacity duration-200',
+          edges.end ? 'opacity-100' : 'opacity-0',
+        )}
+      />
     </div>
   );
 }

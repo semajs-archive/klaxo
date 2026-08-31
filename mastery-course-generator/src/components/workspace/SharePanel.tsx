@@ -116,7 +116,7 @@ export default function SharePanel({ courseId }: { courseId: string }) {
                     readOnly
                     value={link}
                     onFocus={(e) => e.currentTarget.select()}
-                    className="h-10 w-full min-w-0 flex-1 rounded-lg border border-input bg-secondary px-3 font-mono text-xs"
+                    className="h-11 w-full min-w-0 flex-1 rounded-lg border border-input bg-secondary px-3 font-mono text-base sm:text-xs"
                     aria-label="Invite link"
                   />
                   <Button

@@ -148,11 +148,50 @@ const MASTERY = [
   { objective: 'Differentiate a polynomial', met: [0.5, 0, 0, 1, 0, 0] },
 ];
 
-/** The payoff: who has met what, at a glance. */
+/**
+ * The payoff: who has met what, at a glance.
+ *
+ * Two layouts, not one that scrolls. Six named columns need about 520px, so on
+ * a phone the grid was cut off and asked people to swipe a table sideways —
+ * which reads as broken rather than as a feature. The phone version carries the
+ * same information with the axis dropped: one row per objective, its six marks
+ * underneath, and the count spelled out.
+ */
 export function MasteryGrid() {
   return (
-    <div className="rail -mx-6 px-6 lg:mx-0 lg:px-0">
-      <div className="min-w-[520px] rounded-[12px] border border-line-soft bg-surface p-5">
+    <>
+      <div className="rounded-[12px] border border-line-soft bg-surface p-5 sm:hidden">
+        <div className="grid gap-4">
+          {MASTERY.map((row) => {
+            const met = row.met.filter((value) => value === 1).length;
+            return (
+              <div
+                key={row.objective}
+                className="border-b border-line-soft pb-4 last:border-0 last:pb-0"
+              >
+                <p className="text-[0.9375rem] font-medium leading-snug">{row.objective}</p>
+                <div className="mt-2.5 flex items-center gap-3">
+                  <div
+                    className="flex gap-1.5"
+                    role="img"
+                    aria-label={`${met} of ${row.met.length} students have met this`}
+                  >
+                    {row.met.map((value, i) => (
+                      <span key={i} className={markClass(value)} />
+                    ))}
+                  </div>
+                  <span className="text-[0.8125rem] tabular-nums text-ink-3">
+                    {met} of {row.met.length}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <Legend />
+      </div>
+
+      <div className="hidden rounded-[12px] border border-line-soft bg-surface p-5 sm:block">
         <div className="grid grid-cols-[minmax(0,1fr)_repeat(6,32px)] items-end gap-y-1">
           <span />
           {STUDENTS.map((name) => (
@@ -165,19 +204,30 @@ export function MasteryGrid() {
             <Row key={row.objective} objective={row.objective} met={row.met} />
           ))}
         </div>
-
-        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line-soft pt-4 text-[0.75rem] text-ink-3">
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-[3px] bg-rose" /> Met
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-[3px] bg-rose/35" /> Getting there
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-[3px] border border-line" /> Not yet
-          </span>
-        </div>
+        <Legend />
       </div>
+    </>
+  );
+}
+
+function markClass(value: number) {
+  if (value === 1) return 'h-4 w-4 rounded-[4px] bg-rose';
+  if (value === 0.5) return 'h-4 w-4 rounded-[4px] bg-rose/35';
+  return 'h-4 w-4 rounded-[4px] border border-line';
+}
+
+function Legend() {
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line-soft pt-4 text-[0.75rem] text-ink-3">
+      <span className="flex items-center gap-2">
+        <span className="h-3 w-3 rounded-[3px] bg-rose" /> Met
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="h-3 w-3 rounded-[3px] bg-rose/35" /> Getting there
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="h-3 w-3 rounded-[3px] border border-line" /> Not yet
+      </span>
     </div>
   );
 }
@@ -188,15 +238,7 @@ function Row({ objective, met }: { objective: string; met: number[] }) {
       <span className="border-t border-line-soft py-2.5 pr-4 text-[0.8125rem]">{objective}</span>
       {met.map((value, i) => (
         <span key={i} className="grid place-items-center border-t border-line-soft py-2.5">
-          <span
-            className={
-              value === 1
-                ? 'h-4 w-4 rounded-[4px] bg-rose'
-                : value === 0.5
-                  ? 'h-4 w-4 rounded-[4px] bg-rose/35'
-                  : 'h-4 w-4 rounded-[4px] border border-line'
-            }
-          />
+          <span className={markClass(value)} />
         </span>
       ))}
     </>
