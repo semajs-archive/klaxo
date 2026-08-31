@@ -645,7 +645,7 @@ export default function WizardPage() {
       <div className="mb-8">
         <Link
           href="/dashboard"
-          className="mb-3 inline-block font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+          className="mb-3 inline-block font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
         >
           ← Back to Dashboard
         </Link>

@@ -54,14 +54,14 @@ export function StepIndicator({
       {/* Compact phone version: step counter + progress bar */}
       <div className="sm:hidden">
         <div className="flex items-baseline justify-between">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Step {currentIndex + 1} of {steps.length}
           </span>
           <span className="font-display text-sm font-bold">{currentLabel}</span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full border border-ink/20 bg-muted">
+        <div className="mt-2 h-2 overflow-hidden rounded-full border border-border bg-muted">
           <div
-            className="h-full rounded-full bg-brand-500 transition-all"
+            className="h-full rounded-full bg-primary transition-all"
             style={{ width: `${Math.max(8, Math.round(((doneCount + 0.5) / steps.length) * 100))}%` }}
           />
         </div>
@@ -89,11 +89,11 @@ export function StepIndicator({
               <div className="flex flex-col items-center">
                 <div
                   className={clsx(
-                    'flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] font-display text-sm font-bold transition-colors',
-                    isCompleted && 'border-ink bg-primary text-primary-foreground',
-                    isCurrent && 'border-ink bg-brand-400 text-on-brand shadow-pop-sm',
-                    isWarning && 'border-ink bg-warning text-warning-foreground',
-                    isFailed && 'border-ink bg-error text-error-foreground',
+                    'flex h-10 w-10 items-center justify-center rounded-full border font-display text-sm font-bold transition-colors',
+                    isCompleted && 'border-transparent bg-primary text-primary-foreground',
+                    isCurrent && 'border-primary-border bg-primary-soft text-primary-soft-foreground shadow-sm',
+                    isWarning && 'border-transparent bg-warning text-warning-foreground',
+                    isFailed && 'border-transparent bg-error text-error-foreground',
                     isLocked && 'border-border bg-muted text-muted-foreground opacity-60',
                     (!isCompleted && !isCurrent && !isWarning && !isFailed && !isLocked) &&
                       'border-border bg-muted text-muted-foreground',
@@ -126,7 +126,7 @@ export function StepIndicator({
                 </div>
                 <span
                   className={clsx(
-                    'mt-2 hidden text-center font-mono text-[10px] uppercase tracking-[0.1em] sm:block',
+                    'mt-2 hidden text-center font-sans text-[10px] font-semibold uppercase tracking-[0.1em] sm:block',
                     isCurrent
                       ? 'font-medium text-foreground'
                       : isWarning
@@ -143,7 +143,7 @@ export function StepIndicator({
                 <div
                   className={clsx(
                     'mx-1.5 mt-5 h-[2px] flex-1 rounded-full',
-                    isCompleted ? 'bg-ink' : 'bg-border',
+                    isCompleted ? 'bg-primary' : 'bg-border',
                   )}
                 />
               )}

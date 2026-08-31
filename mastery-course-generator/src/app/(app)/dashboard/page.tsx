@@ -192,8 +192,8 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="kicker">My courses</p>
-          <h1 className="mt-2 font-display text-4xl font-extrabold">Pick up where you left off.</h1>
-          <p className="mt-1 text-muted-foreground">
+          <h1 className="mt-2 font-display text-4xl font-bold">Pick up where you left off.</h1>
+          <p className="mt-1 font-serif text-[17px] leading-8 text-foreground-soft">
             Engineer mastery-oriented curricula from your own material.
           </p>
         </div>
@@ -285,7 +285,7 @@ export default function DashboardPage() {
             id="sort-course"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOrder)}
-            className="h-11 rounded-xl border-[1.5px] border-input bg-card px-3 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-11 rounded-xl border border-input bg-card px-3 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <option value="updated-desc">Recently updated</option>
             <option value="updated-asc">Oldest updated</option>
@@ -341,7 +341,7 @@ export default function DashboardPage() {
                 </svg>
               </div>
               <h2 className="mt-4 text-xl font-semibold tracking-tight">No courses yet</h2>
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              <p className="mt-1 max-w-sm font-serif text-[15px] leading-7 text-muted-foreground">
                 Start by creating your first course. KLAXO will turn your material into a
                 structured, mastery-oriented curriculum.
               </p>
@@ -354,7 +354,7 @@ export default function DashboardPage() {
           <Card className="py-16 text-center">
             <CardContent className="flex flex-col items-center">
               <h2 className="text-xl font-semibold tracking-tight">No matches</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 font-serif text-[15px] leading-7 text-muted-foreground">
                 No courses match &ldquo;{search.trim()}&rdquo;.
               </p>
               <Button variant="outline" onClick={() => setSearch('')} className="mt-5">
@@ -409,7 +409,7 @@ export default function DashboardPage() {
                       <Link
                         href={`/wizard/${course.id}`}
                         className={cn(
-                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-brand-500 px-3 py-2 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 active:translate-y-[2px] active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-3 py-2 font-display text-sm font-semibold text-primary-foreground shadow-sm transition-all ease-standard hover:bg-primary-500 active:translate-y-px active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         )}
                       >
                         Continue
@@ -417,7 +417,7 @@ export default function DashboardPage() {
                       <Link
                         href={`/workspace/${course.id}`}
                         className={cn(
-                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-card px-3 py-2 font-display text-sm font-bold shadow-pop-sm transition-all hover:bg-secondary active:translate-y-[2px] active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 font-display text-sm font-semibold shadow-sm transition-all ease-standard hover:bg-secondary active:translate-y-px active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         )}
                       >
                         Workspace
