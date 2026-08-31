@@ -285,7 +285,7 @@ export default function DashboardPage() {
             id="sort-course"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOrder)}
-            className="h-11 rounded-xl border border-input bg-card px-3 py-2 text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-11 rounded-xl border border-input bg-card px-3 py-2 text-base font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-sm"
           >
             <option value="updated-desc">Recently updated</option>
             <option value="updated-asc">Oldest updated</option>
@@ -409,7 +409,7 @@ export default function DashboardPage() {
                       <Link
                         href={`/wizard/${course.id}`}
                         className={cn(
-                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-3 py-2 font-display text-sm font-semibold text-primary-foreground shadow-sm transition-all ease-standard hover:bg-primary-500 active:translate-y-px active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-3 py-2 font-display text-sm font-semibold text-primary-foreground shadow-sm transition-all ease-standard hover:bg-primary-500 active:translate-y-px active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         )}
                       >
                         Continue
@@ -417,7 +417,7 @@ export default function DashboardPage() {
                       <Link
                         href={`/workspace/${course.id}`}
                         className={cn(
-                          'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 font-display text-sm font-semibold shadow-sm transition-all ease-standard hover:bg-secondary active:translate-y-px active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 font-display text-sm font-semibold shadow-sm transition-all ease-standard hover:bg-secondary active:translate-y-px active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         )}
                       >
                         Workspace

@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ButtonLink, Wrap } from '@/components/ui';
 import { Wordmark } from '@/components/Wordmark';
-import { appHref, cn } from '@/lib/cn';
+import { cn, SIGN_IN_HREF, START_HREF } from '@/lib/cn';
 import { NAV } from '@/lib/nav';
 
 export function SiteHeader() {
@@ -35,7 +35,7 @@ export function SiteHeader() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300 ease-out-expo',
+        'sticky top-0 z-50 pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 ease-out-expo',
         lifted ? 'border-b border-line-soft bg-paper/85 backdrop-blur-xl' : 'border-b border-transparent',
       )}
     >
@@ -66,11 +66,11 @@ export function SiteHeader() {
 
         <div className="ml-auto flex items-center gap-2.5">
           <div className="hidden items-center gap-2.5 sm:flex">
-            <ButtonLink href={appHref('/login')} variant="ghost" size="sm">
+            <ButtonLink href={SIGN_IN_HREF} variant="quiet" size="sm">
               Sign in
             </ButtonLink>
-            <ButtonLink href={appHref('/login?mode=signup')} size="sm">
-              Open KLAXO
+            <ButtonLink href={START_HREF} size="sm">
+              Start a course
             </ButtonLink>
           </div>
 
@@ -109,8 +109,8 @@ export function SiteHeader() {
                 </Link>
               ))}
               <div className="flex flex-col gap-2.5 py-4">
-                <ButtonLink href={appHref('/login?mode=signup')}>Open KLAXO</ButtonLink>
-                <ButtonLink href={appHref('/login')} variant="ghost">
+                <ButtonLink href={START_HREF}>Start a course</ButtonLink>
+                <ButtonLink href={SIGN_IN_HREF} variant="ghost">
                   Sign in
                 </ButtonLink>
               </div>

@@ -20,6 +20,7 @@ import { StepIndicator } from '@/components/wizard/StepIndicator';
 import { unitDisplayTitle } from '@/components/workspace/helpers';
 import { WizardStep } from '@/components/wizard/WizardStep';
 import { FileUpload, type PersistedSource } from '@/components/wizard/FileUpload';
+import { cn } from '@/lib/cn';
 
 /* ------------------------------------------------------------------ types ---- */
 
@@ -641,11 +642,11 @@ export default function WizardPage() {
   const nextStep = STEP_KEYS[STEP_KEYS.indexOf(currentStep) + 1] as StepId | undefined;
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
+    <div className="container mx-auto max-w-4xl px-4 pt-8 pb-14 sm:pb-8">
       <div className="mb-8">
         <Link
           href="/dashboard"
-          className="mb-3 inline-block font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+          className="mb-1 -ml-1 inline-flex min-h-11 items-center px-1 font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
         >
           ← Back to Dashboard
         </Link>
@@ -887,17 +888,34 @@ export default function WizardPage() {
         )}
       </div>
 
-      <div className="flex justify-between mt-6">
-        <Button
-          variant="outline"
-          onClick={() => prevStep && goToStep(prevStep)}
-          disabled={!prevStep}
-        >
-          ← Previous
-        </Button>
-        <Button onClick={() => nextStep && goToStep(nextStep)} disabled={!nextStep}>
-          Next →
-        </Button>
+      {/*
+        Phone: Back/Next ride at the bottom of the screen — above the tab bar
+        and the home indicator — so changing step never means scrolling a long
+        form to the end. On anything wider they sit inline as before.
+      */}
+      <div
+        className={cn(
+          'fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-card/95 px-4 py-3 backdrop-blur-md',
+          'sm:static sm:mt-6 sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none',
+        )}
+      >
+        <div className="mx-auto flex max-w-4xl gap-3">
+          <Button
+            variant="outline"
+            className="min-h-11 flex-1 sm:flex-none"
+            onClick={() => prevStep && goToStep(prevStep)}
+            disabled={!prevStep}
+          >
+            ← Previous
+          </Button>
+          <Button
+            className="min-h-11 flex-1 sm:ml-auto sm:flex-none"
+            onClick={() => nextStep && goToStep(nextStep)}
+            disabled={!nextStep}
+          >
+            Next →
+          </Button>
+        </div>
       </div>
     </div>
   );

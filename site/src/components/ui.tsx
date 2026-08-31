@@ -4,16 +4,17 @@ import { cn } from '@/lib/cn';
 
 /* ---------------------------------------------------------------- buttons */
 
-type Variant = 'primary' | 'ghost' | 'on-ink' | 'on-ink-ghost';
+type Variant = 'primary' | 'ghost' | 'quiet' | 'on-band' | 'on-band-ghost';
 
 // Every variant states its own border colour. Leaving a `border-transparent`
 // in the base and overriding it per variant is a coin-flip: same specificity,
 // and these class names are not merged.
 const variants: Record<Variant, string> = {
-  primary: 'border-rose bg-rose text-white hover:border-rose-deep hover:bg-rose-deep',
-  ghost: 'border-line text-ink hover:border-ink hover:bg-white/55',
-  'on-ink': 'border-white bg-white text-ink hover:border-[#e8e9f0] hover:bg-[#e8e9f0]',
-  'on-ink-ghost': 'border-white/35 text-on-ink hover:border-white hover:bg-white/10',
+  primary: 'border-rose bg-rose text-on-rose hover:border-rose-deep hover:bg-rose-deep',
+  ghost: 'border-line text-ink hover:border-ink hover:bg-surface',
+  quiet: 'border-transparent text-ink-2 hover:bg-surface-2 hover:text-ink',
+  'on-band': 'border-on-band bg-on-band text-band hover:opacity-90',
+  'on-band-ghost': 'border-on-band-line text-on-band hover:border-on-band hover:bg-on-band/10',
 };
 
 const buttonBase =

@@ -125,7 +125,7 @@ function LoginForm() {
 
           <button
             type="button"
-            className="mt-5 w-full text-center text-sm font-semibold text-primary hover:underline"
+            className="mt-5 min-h-11 w-full text-center text-sm font-semibold text-primary hover:underline"
             onClick={() => {
               setMode(mode === 'login' ? 'signup' : 'login');
               setError(null);

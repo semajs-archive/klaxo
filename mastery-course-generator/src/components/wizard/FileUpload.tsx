@@ -330,7 +330,7 @@ export function FileUpload({
                 setPrompts(next);
               }}
               placeholder={`Instruction ${i + 1} (e.g., "Design an introductory statistics course…")`}
-              className="flex-1 min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex-1 min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
               rows={2}
             />
             {prompts.length > 1 && (
@@ -351,7 +351,7 @@ export function FileUpload({
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">
           {loadingSources
             ? 'Loading existing sources…'
@@ -359,7 +359,7 @@ export function FileUpload({
             ? `${serverSources.length} source(s) uploaded`
             : 'No sources uploaded yet'}
         </p>
-        <Button onClick={uploadAll} loading={uploading} disabled={files.length === 0 && prompts.filter((p) => p.trim()).length === 0}>
+        <Button className="w-full sm:w-auto" onClick={uploadAll} loading={uploading} disabled={files.length === 0 && prompts.filter((p) => p.trim()).length === 0}>
           Upload sources
         </Button>
       </div>

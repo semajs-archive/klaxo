@@ -11,6 +11,33 @@ import { cn } from '@/lib/cn';
  */
 const links = [{ href: '/dashboard', label: 'My courses' }];
 
+function CoursesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+      <path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z" />
+      <path d="M4 19a2 2 0 0 0 2 2h13" />
+    </svg>
+  );
+}
+
+function AccountIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}
+
+/**
+ * The phone's bottom bar. Two destinations, because one tab is not navigation
+ * — it is a label taking up the most reachable strip of the screen.
+ */
+const bottomLinks: { href: string; label: string; Icon: () => React.ReactElement }[] = [
+  { href: '/dashboard', label: 'My courses', Icon: CoursesIcon },
+  { href: '/account', label: 'Account', Icon: AccountIcon },
+];
+
 function isActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
@@ -93,7 +120,7 @@ export function AccountMenu() {
     return (
       <Link
         href="/login"
-        className="rounded-full border border-transparent bg-primary px-4 py-1.5 font-display text-sm font-semibold text-primary-foreground shadow-sm transition-all ease-standard hover:bg-primary-500 active:translate-y-px active:shadow-none"
+        className="inline-flex min-h-11 items-center rounded-full border border-transparent bg-primary px-4 py-1.5 font-display text-sm font-semibold text-primary-foreground shadow-sm transition-all ease-standard hover:bg-primary-500 active:translate-y-px active:shadow-none sm:min-h-0"
       >
         Sign in
       </Link>
@@ -113,7 +140,7 @@ export function AccountMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold hover:bg-secondary/70"
+        className="flex min-h-11 items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold hover:bg-secondary/70 sm:min-h-0"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -133,7 +160,7 @@ export function AccountMenu() {
           <button
             type="button"
             role="menuitem"
-            className="w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-secondary"
+            className="min-h-11 w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-secondary"
             onClick={async () => {
               await fetch('/api/auth/logout', { method: 'POST' });
               setOpen(false);
@@ -159,24 +186,24 @@ export function BottomNav() {
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] sm:hidden"
     >
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}>
-        {links.map((link) => {
-          const active = isActive(pathname, link.href);
+      <div
+        className="grid"
+        style={{ gridTemplateColumns: `repeat(${bottomLinks.length}, minmax(0, 1fr))` }}
+      >
+        {bottomLinks.map(({ href, label, Icon }) => {
+          const active = isActive(pathname, href);
           return (
             <Link
-              key={link.href}
-              href={link.href}
+              key={href}
+              href={href}
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-semibold',
                 active ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
-                <path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z" />
-                <path d="M4 19a2 2 0 0 0 2 2h13" />
-              </svg>
-              <span className={cn(active && 'border-b-2 border-primary')}>{link.label}</span>
+              <Icon />
+              <span className={cn(active && 'border-b-2 border-primary')}>{label}</span>
             </Link>
           );
         })}
