@@ -69,9 +69,14 @@ export default function StudyPage() {
               const records: MasteryRecord[] = mastery.records ?? [];
               const due = (mastery.recommendations?.cumulativeReview ?? []).length;
 
+              // A course is built once it HAS objectives. Mastery records only
+              // appear once something has been attempted, so counting those
+              // would call a finished course unbuilt until its first question.
+              const objectiveCount: number = mastery.objectiveCount ?? 0;
+
               return {
                 course,
-                total: records.length,
+                total: objectiveCount,
                 mastered: records.filter((r) => MASTERED_STATES.has(r.state)).length,
                 due,
                 weak: records
@@ -81,7 +86,7 @@ export default function StudyPage() {
                     id: r.objectiveId,
                     statement: r.objectiveStatement ?? 'Untitled objective',
                   })),
-                ready: records.length > 0,
+                ready: objectiveCount > 0,
               };
             } catch {
               return empty;

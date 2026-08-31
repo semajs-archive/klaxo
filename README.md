@@ -16,8 +16,13 @@ npm run dev        # http://localhost:3000
 
 Everything lives in `mastery-course-generator/`. It is a Next.js app with a
 SQLite database on disk and a background worker that runs generation jobs.
-See [`mastery-course-generator/README.md`](mastery-course-generator/README.md)
-for configuration, including which AI provider it talks to.
+
+**It starts with no AI connected**, which means courses are built from example
+text rather than from your material. The app says so in a banner until you fix
+it. Connecting one takes about five minutes and the first option is free:
+[`docs/connect-an-ai.md`](mastery-course-generator/docs/connect-an-ai.md).
+Keys are never committed — `.env` is ignored by git — so everyone who runs this
+uses their own.
 
 The app opens on **Study**: what is due for review, what you are weakest on, and
 a button that starts practice. **Material** is where you add what you are

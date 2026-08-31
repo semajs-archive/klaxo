@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { HeaderNav, BottomNav } from '@/components/SiteNav';
+import { DemoModeBanner } from '@/components/DemoModeBanner';
 import { Wordmark } from '@/components/Wordmark';
 
 /**
@@ -9,6 +10,7 @@ import { Wordmark } from '@/components/Wordmark';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <DemoModeBanner />
       <header className="sticky top-0 z-40 border-b border-border bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
