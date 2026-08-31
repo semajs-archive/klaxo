@@ -35,8 +35,8 @@ export function MobileActionBar() {
         >
           <div className="flex items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.9375rem] font-semibold">Start a course</p>
-              <p className="truncate text-xs text-ink-3">No account needed</p>
+              <p className="truncate text-[0.9375rem] font-semibold">Open KLAXO</p>
+              <p className="truncate text-xs text-ink-3">No sign-up, no login</p>
             </div>
             <a
               href={START_HREF}

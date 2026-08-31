@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Wrap } from '@/components/ui';
 import { Wordmark } from '@/components/Wordmark';
 import { NAV } from '@/lib/nav';
-import { SIGN_IN_HREF, START_HREF } from '@/lib/cn';
+import { START_HREF } from '@/lib/cn';
 
 export function SiteFooter() {
   return (
@@ -38,12 +38,7 @@ export function SiteFooter() {
           <ul className="mt-4 grid gap-3">
             <li>
               <a href={START_HREF} className="text-[0.9375rem] font-medium text-ink-2 hover:text-rose">
-                Start a course
-              </a>
-            </li>
-            <li>
-              <a href={SIGN_IN_HREF} className="text-[0.9375rem] font-medium text-ink-2 hover:text-rose">
-                Sign in
+                Open KLAXO
               </a>
             </li>
           </ul>

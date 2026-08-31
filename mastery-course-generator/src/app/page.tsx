@@ -1,11 +1,9 @@
 import { redirect } from 'next/navigation';
 
 /**
- * The app has no front page of its own any more — the public site is a
- * separate deployment. Anyone landing on the root is here to work, so send
- * them to their courses; middleware bounces them to sign-in if they are not
- * signed in yet.
+ * There is nothing to sign into and nothing to sell here, so the root goes
+ * straight to the thing this app is for: revising.
  */
 export default function RootPage() {
-  redirect('/dashboard');
+  redirect('/study');
 }

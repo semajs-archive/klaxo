@@ -96,9 +96,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/bootstrap', { method: 'POST' }).then(() =>
-        fetch('/api/courses'),
-      );
+      const res = await fetch('/api/courses');
       if (!res.ok) {
         throw new Error(`Request failed with status ${res.status}`);
       }
@@ -114,8 +112,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/auth/bootstrap', { method: 'POST' })
-      .then(() => fetch('/api/courses'))
+    fetch('/api/courses')
       .then((res) => {
         if (cancelled) return undefined;
         if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
@@ -191,17 +188,17 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="kicker">My courses</p>
-          <h1 className="mt-2 font-display text-4xl font-bold">Pick up where you left off.</h1>
+          <p className="kicker">Material</p>
+          <h1 className="mt-2 font-display text-4xl font-bold">What you are studying from.</h1>
           <p className="mt-1 font-serif text-[17px] leading-8 text-foreground-soft">
-            Engineer mastery-oriented curricula from your own material.
+            Notes, slides, chapters, past papers — anything you revise from.
           </p>
         </div>
         <Button
           onClick={createCourse}
           loading={creating}
           size="lg"
-          aria-label="Create a new course"
+          aria-label="Add material"
         >
           <svg
             className="mr-2 h-4 w-4"
@@ -215,7 +212,7 @@ export default function DashboardPage() {
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          Create Course
+          Add material
         </Button>
       </div>
 
@@ -267,8 +264,8 @@ export default function DashboardPage() {
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <Input
-            aria-label="Search courses"
-            placeholder="Search courses…"
+            aria-label="Search your material"
+            placeholder="Search your material…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -340,13 +337,13 @@ export default function DashboardPage() {
                   <line x1="9" y1="15" x2="15" y2="15" />
                 </svg>
               </div>
-              <h2 className="mt-4 text-xl font-semibold tracking-tight">No courses yet</h2>
+              <h2 className="mt-4 text-xl font-semibold tracking-tight">Nothing here yet</h2>
               <p className="mt-1 max-w-sm font-serif text-[15px] leading-7 text-muted-foreground">
-                Start by creating your first course. KLAXO will turn your material into a
-                structured, mastery-oriented curriculum.
+                Add the notes, slides or chapters you are revising from. KLAXO turns them
+                into a course with practice you can drill.
               </p>
               <Button onClick={createCourse} loading={creating} className="mt-5">
-                Create your first course
+                Add your first material
               </Button>
             </CardContent>
           </Card>
