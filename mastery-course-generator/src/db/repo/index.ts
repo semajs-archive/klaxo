@@ -5,7 +5,7 @@
  * Drizzle directly. Ownership checks (`userId`) are applied at the call site;
  * these helpers provide typed, predictable CRUD.
  */
-import { eq, desc, asc, and, inArray, lt } from 'drizzle-orm';
+import { eq, desc, asc, and, or, inArray, lt } from 'drizzle-orm';
 import { getDb, schema } from '../index';
 
 const {
@@ -591,6 +591,10 @@ export function listTopics(courseId: string) {
     .all();
 }
 
+export function deleteTopic(id: string) {
+  return getDb().delete(topics).where(eq(topics.id, id)).run();
+}
+
 export function deleteTopicsByCourse(courseId: string) {
   return getDb().delete(topics).where(eq(topics.courseId, courseId)).run();
 }
@@ -664,6 +668,8 @@ export function deleteObjectivesByCourse(courseId: string) {
 }
 
 export function updateObjective(id: string, data: Partial<{
+  unitId: string | null;
+  topicId: string | null;
   ordinal: number;
   code: string;
   title: string;
@@ -682,6 +688,43 @@ export function updateObjective(id: string, data: Partial<{
     .where(eq(objectives.id, id))
     .returning()
     .get();
+}
+
+/**
+ * Targeted deletes, used when a replan drops an objective. The by-course
+ * variants above are for wholesale rebuilds; these remove one objective and
+ * everything hanging off it without touching the rest of the course.
+ */
+export function deleteObjective(id: string) {
+  return getDb().delete(objectives).where(eq(objectives.id, id)).run();
+}
+
+export function deleteQuestionsByObjective(objectiveId: string) {
+  return getDb().delete(questions).where(eq(questions.objectiveId, objectiveId)).run();
+}
+
+export function deletePracticeSetsByObjective(objectiveId: string) {
+  return getDb().delete(practiceSets).where(eq(practiceSets.objectiveId, objectiveId)).run();
+}
+
+export function deleteDependenciesForObjective(objectiveId: string) {
+  return getDb()
+    .delete(objectiveDependencies)
+    .where(
+      or(
+        eq(objectiveDependencies.objectiveId, objectiveId),
+        eq(objectiveDependencies.prerequisiteId, objectiveId),
+      ),
+    )
+    .run();
+}
+
+export function deleteLesson(id: string) {
+  return getDb().delete(lessons).where(eq(lessons.id, id)).run();
+}
+
+export function deleteMasteryByObjective(objectiveId: string) {
+  return getDb().delete(masteryRecords).where(eq(masteryRecords.objectiveId, objectiveId)).run();
 }
 
 /* ------------------------------------------------ objectiveDependencies ---- */
@@ -787,6 +830,8 @@ export function deleteLessonsByCourse(courseId: string) {
 }
 
 export function updateLesson(id: string, data: Partial<{
+  unitId: string;
+  topicId: string | null;
   ordinal: number;
   title: string;
   summary: string;
@@ -1206,6 +1251,26 @@ export function updateProvenance(id: string, data: Partial<{
     .where(eq(provenance.id, id))
     .returning()
     .get();
+}
+
+/**
+ * An assessment is written across a whole unit, so when the units are rebuilt
+ * it is detached rather than deleted — the questions in it are still good.
+ */
+export function detachAssessmentsFromUnits(courseId: string) {
+  return getDb()
+    .update(assessments)
+    .set({ unitId: null })
+    .where(eq(assessments.courseId, courseId))
+    .run();
+}
+
+/** Provenance for structure that is about to be deleted, e.g. old units. */
+export function deleteProvenanceForEntity(entityType: string, entityId: string) {
+  return getDb()
+    .delete(provenance)
+    .where(and(eq(provenance.entityType, entityType), eq(provenance.entityId, entityId)))
+    .run();
 }
 
 export function deleteProvenanceByCourse(courseId: string) {
