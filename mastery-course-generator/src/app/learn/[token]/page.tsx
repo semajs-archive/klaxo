@@ -103,11 +103,11 @@ export default function LearnJoinPage() {
       <Card>
         <CardContent className="p-7 sm:p-8">
           <p className="kicker">You&rsquo;re invited to</p>
-          <h1 className="mt-2 font-display text-3xl font-extrabold leading-tight">
+          <h1 className="mt-2 font-display text-3xl font-bold leading-tight">
             {info.course.title}
           </h1>
           {info.course.description && (
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            <p className="mt-2 font-serif text-[15px] leading-7 text-foreground-soft">
               {info.course.description}
             </p>
           )}

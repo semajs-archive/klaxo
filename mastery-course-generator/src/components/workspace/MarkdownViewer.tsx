@@ -50,7 +50,7 @@ const components = {
     <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em] text-foreground" {...props} />
   ),
   pre: (props: React.ComponentPropsWithoutRef<'pre'>) => (
-    <pre className="my-3 overflow-x-auto rounded-lg bg-neutral-900 p-4 text-sm text-neutral-100 dark:bg-neutral-950" {...props} />
+    <pre className="my-3 overflow-x-auto rounded-lg border border-border bg-neutral-950 p-4 font-mono text-sm text-neutral-100" {...props} />
   ),
   a: (props: React.ComponentPropsWithoutRef<'a'>) => (
     <a className="text-primary underline underline-offset-2 hover:text-primary/80" {...props} />

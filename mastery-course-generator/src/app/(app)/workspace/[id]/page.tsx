@@ -196,7 +196,7 @@ export default function WorkspacePage() {
         {access === 'owner' && (
           <Link
             href="/dashboard"
-            className="mb-3 inline-block font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+            className="mb-3 inline-block font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
           >
             ← Back to Dashboard
           </Link>
@@ -229,10 +229,10 @@ export default function WorkspacePage() {
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'whitespace-nowrap rounded-full px-4 py-2 font-display text-sm font-bold transition-all',
+              'whitespace-nowrap rounded-full px-4 py-2 font-display text-sm font-semibold transition-all ease-standard',
               activeTab === tab.id
-                ? 'border-[1.5px] border-ink bg-brand-400 text-on-brand shadow-pop-sm'
-                : 'border-[1.5px] border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
+                ? 'border border-transparent bg-primary text-primary-foreground shadow-sm'
+                : 'border border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
             )}
           >
             {tab.label}
@@ -302,8 +302,8 @@ function OverviewTab({
         {counts.map((c) => (
           <Card key={c.label}>
             <CardContent className="p-4 sm:py-5 sm:pl-6">
-              <div className="font-display text-3xl font-extrabold sm:text-4xl">{c.value}</div>
-              <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px]">{c.label}</div>
+              <div className="font-display text-3xl font-bold sm:text-4xl">{c.value}</div>
+              <div className="mt-1.5 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px]">{c.label}</div>
             </CardContent>
           </Card>
         ))}

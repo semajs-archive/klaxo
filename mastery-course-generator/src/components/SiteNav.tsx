@@ -93,7 +93,7 @@ export function AccountMenu() {
     return (
       <Link
         href="/login"
-        className="rounded-full border-[1.5px] border-ink bg-brand-500 px-4 py-1.5 font-display text-sm font-bold text-on-brand shadow-pop-sm transition-all hover:bg-brand-400 dark:border-foreground dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 active:translate-y-[2px] active:shadow-none"
+        className="rounded-full border border-transparent bg-primary px-4 py-1.5 font-display text-sm font-semibold text-primary-foreground shadow-sm transition-all ease-standard hover:bg-primary-500 active:translate-y-px active:shadow-none"
       >
         Sign in
       </Link>
@@ -125,7 +125,7 @@ export function AccountMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-xl border-[1.5px] border-ink bg-card shadow-pop"
+          className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
         >
           <div className="border-b border-border px-4 py-2.5 text-xs text-muted-foreground">
             {me.email}
@@ -138,7 +138,7 @@ export function AccountMenu() {
               await fetch('/api/auth/logout', { method: 'POST' });
               setOpen(false);
               setSignedOut(true);
-              router.push('/');
+              router.push('/login');
               router.refresh();
             }}
           >
@@ -157,7 +157,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-ink bg-card pb-[env(safe-area-inset-bottom)] sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] sm:hidden"
     >
       <div className="grid" style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}>
         {links.map((link) => {
@@ -176,7 +176,7 @@ export function BottomNav() {
                 <path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z" />
                 <path d="M4 19a2 2 0 0 0 2 2h13" />
               </svg>
-              <span className={cn(active && 'border-b-2 border-brand-500')}>{link.label}</span>
+              <span className={cn(active && 'border-b-2 border-primary')}>{link.label}</span>
             </Link>
           );
         })}

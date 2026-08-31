@@ -72,10 +72,10 @@ function LoginForm() {
       <Card>
         <CardContent className="p-7 sm:p-8">
           <p className="kicker">{mode === 'login' ? 'Welcome back' : 'Get started'}</p>
-          <h1 className="mt-2 font-display text-3xl font-extrabold">
+          <h1 className="mt-2 font-display text-3xl font-bold">
             {mode === 'login' ? 'Sign in' : 'Create your account'}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 font-serif text-[15px] leading-7 text-foreground-soft">
             {mode === 'login'
               ? 'Pick up your courses where you left them.'
               : 'Your account keeps your courses safe across devices. Anything you built as a guest comes with you.'}
@@ -138,7 +138,7 @@ function LoginForm() {
 
           <div className="mt-6 flex items-center gap-3">
             <span className="h-px flex-1 bg-border" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               or
             </span>
             <span className="h-px flex-1 bg-border" />
@@ -153,7 +153,7 @@ function LoginForm() {
           >
             Look around without an account
           </Button>
-          <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
+          <p className="mt-3 text-center font-serif text-[13px] leading-6 text-muted-foreground">
             Guest courses live in this browser only. Create an account later and they come with you.
           </p>
         </CardContent>

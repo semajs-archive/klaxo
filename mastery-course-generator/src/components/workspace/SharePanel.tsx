@@ -116,13 +116,13 @@ export default function SharePanel({ courseId }: { courseId: string }) {
                     readOnly
                     value={link}
                     onFocus={(e) => e.currentTarget.select()}
-                    className="h-10 w-full min-w-0 flex-1 rounded-lg border-[1.5px] border-input bg-secondary px-3 font-mono text-xs"
+                    className="h-10 w-full min-w-0 flex-1 rounded-lg border border-input bg-secondary px-3 font-mono text-xs"
                     aria-label="Invite link"
                   />
                   <Button
                     size="sm"
                     variant="secondary"
-                    className={cn(copied && 'bg-brand-300 text-on-brand')}
+                    className={cn(copied && 'border-success/40 bg-success-subtle text-success-subtle-foreground')}
                     onClick={async () => {
                       await navigator.clipboard.writeText(link);
                       setCopied(true);
@@ -134,7 +134,7 @@ export default function SharePanel({ courseId }: { courseId: string }) {
                 </div>
 
                 <div className="mt-5">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Joined · {data.students.length}
                   </p>
                   {data.students.length === 0 ? (
