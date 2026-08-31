@@ -14,7 +14,7 @@ import { notFound, toAppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 
 const StartJobSchema = z.object({
-  kind: z.enum(['ANALYZE_SOURCE', 'BLUEPRINT', 'GENERATE_COURSE', 'REGENERATE_LESSON', 'QA', 'REVISE']),
+  kind: z.enum(['ANALYZE_SOURCE', 'BLUEPRINT', 'GENERATE_COURSE', 'REGENERATE_LESSON', 'REPLAN', 'QA', 'REVISE']),
   requestKey: z.string().optional(),
   input: z.record(z.string(), z.unknown()).optional(),
 });

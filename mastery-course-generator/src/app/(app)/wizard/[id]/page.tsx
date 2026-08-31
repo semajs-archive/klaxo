@@ -42,6 +42,8 @@ interface Job {
   stage: string | null;
   progress: number;
   message: string | null;
+  /** JSON payload a finished job leaves behind, e.g. a replan's counts. */
+  result?: string | null;
 }
 
 interface DetectedUnit {
@@ -210,6 +212,10 @@ export default function WizardPage() {
   const [blueprintProgress, setBlueprintProgress] = useState(0);
   const [blueprintMessage, setBlueprintMessage] = useState('');
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
+  const alreadyBuilt = (workspace?.objectives.length ?? 0) > 0;
+  const [replanning, setReplanning] = useState(false);
+  const [replanMessage, setReplanMessage] = useState<string | null>(null);
+  const [replanSummary, setReplanSummary] = useState<string | null>(null);
 
   // Generation.
   const [generating, setGenerating] = useState(false);
@@ -549,6 +555,57 @@ export default function WizardPage() {
     }
   };
 
+  /**
+   * Fold newly added material into a course that is already built.
+   *
+   * The job does the whole thing server-side: re-reads every source, snapshots
+   * the course, merges the new plan into the old one, and writes lessons only
+   * for objectives that did not exist before. Everything already practised
+   * keeps its progress.
+   */
+  const handleReplan = async () => {
+    setReplanning(true);
+    setReplanMessage('Reading the new material…');
+    setReplanSummary(null);
+    try {
+      const res = await fetch(`/api/courses/${courseId}/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'REPLAN' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Update request failed');
+      }
+      const { jobId } = (await res.json()) as { jobId: string };
+
+      await pollJob(
+        jobId,
+        'REPLAN',
+        (job) => setReplanMessage(job.message ?? 'Updating…'),
+        async (job) => {
+          try {
+            const summary = job.result ? JSON.parse(job.result) : null;
+            if (summary) {
+              setReplanSummary(
+                `Kept ${summary.kept}, added ${summary.added}, removed ${summary.removed}.`,
+              );
+            }
+          } catch {
+            setReplanSummary('Course updated.');
+          }
+          setReplanMessage('Course updated.');
+          await fetchWorkspace();
+        },
+        (job) => setReplanMessage(job.message ?? 'Update failed'),
+      );
+    } catch (err) {
+      setReplanMessage((err as Error).message);
+    } finally {
+      setReplanning(false);
+    }
+  };
+
   const handleGenerateCourse = async () => {
     setGenerating(true);
     setGenerationStage('blueprint');
@@ -717,9 +774,38 @@ export default function WizardPage() {
                   {sources.length} source{sources.length === 1 ? '' : 's'} ready
                 </Badge>
                 <p className="text-sm text-muted-foreground">
-                  Proceed to Source Understanding to analyze them.
+                  {alreadyBuilt
+                    ? 'Update the course below, or carry on through the steps.'
+                    : 'Proceed to Source Understanding to analyze them.'}
                 </p>
               </div>
+            )}
+
+            {/* Only meaningful once there is a course to update. */}
+            {alreadyBuilt && (
+              <Card className="mt-6">
+                <CardContent className="pt-6">
+                  <h3 className="font-display text-lg font-semibold">
+                    Added something new?
+                  </h3>
+                  <p className="mt-2 max-w-[60ch] font-serif text-[1.0625rem] leading-relaxed text-foreground-soft">
+                    Update this course with it. Anything you have already practised keeps its
+                    progress, only genuinely new objectives get written, and the current version is
+                    saved first so you can go back.
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <Button onClick={handleReplan} loading={replanning}>
+                      Update this course
+                    </Button>
+                    {replanMessage && (
+                      <span className="text-sm text-muted-foreground">{replanMessage}</span>
+                    )}
+                  </div>
+                  {replanSummary && (
+                    <p className="mt-3 text-sm font-medium text-primary">{replanSummary}</p>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </WizardStep>
         )}

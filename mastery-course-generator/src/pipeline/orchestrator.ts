@@ -23,6 +23,13 @@ import {
   cancelGenerationJob,
   getUserEditsForEntity,
 } from '../db/repo';
+import {
+  getCourse,
+  getLatestKnowledgePackage,
+  getObjective,
+  listSourceDocuments,
+  updateKnowledgePackage,
+} from '../db/repo';
 import { analyzeSources } from '../services/source-analysis';
 import {
   generateBlueprint,
@@ -36,6 +43,8 @@ import {
   persistAssessment,
 } from '../services/course-generation';
 import { runQa } from '../services/qa';
+import { replanCourse } from '../services/replan';
+import { createVersion } from '../services/versioning';
 import { repairQaFailures } from '../services/revision';
 import { JobKind, JobState, CurriculumBlueprint, LessonContent } from '../ai/types';
 import { pipelineFailed } from '../lib/errors';
@@ -413,6 +422,106 @@ export async function executeRegenerateLessonJob(jobId: string, courseId: string
 /**
  * Execute a QA job.
  */
+/**
+ * Execute a REPLAN job: fold newly added material into a course that is
+ * already built.
+ *
+ * Order matters here. The course is snapshotted first, so a replan someone
+ * dislikes is one restore away. Then the plan is merged rather than rebuilt,
+ * which keeps every objective that survived — and with it the practice
+ * history recorded against it. Only the genuinely new objectives are written
+ * for; regenerating the whole course would be slower, cost more, and quietly
+ * replace work that was already reviewed.
+ */
+export async function executeReplanJob(
+  jobId: string,
+  courseId: string,
+  userId: string,
+): Promise<void> {
+  await setState(jobId, 'PLANNING', 'replan', 0.05, 'Saving a version first…');
+  await emit(jobId, courseId, 'replan', 'Saving the current course as a version…', 0);
+
+  try {
+    createVersion(courseId, userId, {
+      label: 'Before adding material',
+      notes: 'Automatic snapshot taken before a replan.',
+    });
+
+    // Re-read every source, not just the new ones: the interpretation is one
+    // document covering the whole course, and the new material may change what
+    // the old material means.
+    await setState(jobId, 'ANALYZING', 'replan', 0.15, 'Reading the material…');
+    const documents = listSourceDocuments(courseId);
+    if (documents.length === 0) throw pipelineFailed('There is no material to re-plan from.');
+
+    await analyzeSources({ courseId, documentIds: documents.map((d) => d.id) });
+
+    // Clicking "Update this course" IS the approval — the alternative is
+    // stopping mid-job to ask again for something already asked for.
+    const kp = getLatestKnowledgePackage(courseId);
+    if (kp && kp.status !== 'approved') {
+      updateKnowledgePackage(kp.id, { status: 'approved' });
+    }
+
+    await setState(jobId, 'PLANNING', 'replan', 0.25, 'Re-planning with the new material…');
+    await emit(jobId, courseId, 'replan', 'Working out what changes…', 1);
+
+    const summary = await replanCourse(courseId);
+
+    await emit(
+      jobId,
+      courseId,
+      'replan',
+      `Kept ${summary.kept}, added ${summary.added}, removed ${summary.removed}.`,
+      2,
+    );
+
+    // Only the new objectives need writing. Everything kept already has its
+    // lesson and practice, and its mastery record is untouched.
+    const total = Math.max(summary.addedObjectiveIds.length, 1);
+    let done = 0;
+
+    for (const objectiveId of summary.addedObjectiveIds) {
+      checkCancelled(jobId);
+      const objective = getObjective(objectiveId);
+      if (!objective?.unitId) continue;
+
+      const lessonContent = await generateLesson(courseId, objective.unitId, [objectiveId], undefined, objective.ordinal ?? 0);
+      persistLesson(courseId, objective.unitId, undefined, objective.ordinal ?? 0, [objectiveId], lessonContent);
+
+      const practice = await generatePractice(courseId, objectiveId);
+      persistPracticeSet(courseId, objectiveId, undefined, practice);
+
+      done++;
+      await setState(
+        jobId,
+        'GENERATING',
+        'replan',
+        0.3 + 0.6 * (done / total),
+        `Writing for new objective ${done}/${summary.addedObjectiveIds.length}…`,
+      );
+    }
+
+    await setState(jobId, 'COMPLETED', 'replan', 1, 'Course updated.');
+    updateGenerationJob(jobId, {
+      state: 'COMPLETED',
+      stage: 'replan',
+      progress: 1,
+      finishedAt: Date.now(),
+      result: JSON.stringify(summary),
+    });
+    await emit(jobId, courseId, 'replan', 'Course updated with the new material.', 3);
+  } catch (err) {
+    await setState(jobId, 'FAILED', 'replan', 0, `Replan failed: ${(err as Error).message}`);
+    updateGenerationJob(jobId, {
+      state: 'FAILED',
+      finishedAt: Date.now(),
+      error: (err as Error).message,
+    });
+    throw pipelineFailed(`Replan failed: ${(err as Error).message}`);
+  }
+}
+
 export async function executeQaJob(jobId: string, courseId: string): Promise<void> {
   await setState(jobId, 'VALIDATING', 'qa', 0.1, 'Running QA checks…');
   await emit(jobId, courseId, 'qa', 'Running QA checks…', 0);
@@ -563,6 +672,12 @@ export async function runJob(jobId: string): Promise<void> {
         const lessonId = input.lessonId;
         if (!lessonId) throw pipelineFailed('REGENERATE_LESSON job requires lessonId in input');
         await executeRegenerateLessonJob(jobId, job.courseId, lessonId);
+        break;
+      }
+      case 'REPLAN': {
+        const course = getCourse(job.courseId);
+        if (!course) throw pipelineFailed('REPLAN job course not found');
+        await executeReplanJob(jobId, job.courseId, course.userId);
         break;
       }
       case 'QA':

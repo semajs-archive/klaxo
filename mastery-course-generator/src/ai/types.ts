@@ -277,6 +277,7 @@ export const JobKindSchema = z.enum([
   'BLUEPRINT',
   'GENERATE_COURSE',
   'REGENERATE_LESSON',
+  'REPLAN',
   'QA',
   'REVISE',
 ]);
