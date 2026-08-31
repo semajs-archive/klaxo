@@ -19,7 +19,8 @@ SQLite database on disk and a background worker that runs generation jobs.
 
 **It starts with no AI connected**, which means courses are built from example
 text rather than from your material. The app says so in a banner until you fix
-it. Connecting one takes about five minutes and the first option is free:
+it. Connecting one takes about five minutes and the first option is free — run
+`npm run ai:setup` in `mastery-course-generator/`, or read
 [`docs/connect-an-ai.md`](mastery-course-generator/docs/connect-an-ai.md).
 Keys are never committed — `.env` is ignored by git — so everyone who runs this
 uses their own.
