@@ -22,3 +22,6 @@ uploads/
 .DS_Store
 Thumbs.db
 coverage/
+
+# Stray artefacts from local test runs
+.tmp-test-uploads/
