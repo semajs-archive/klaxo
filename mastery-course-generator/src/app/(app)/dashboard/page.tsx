@@ -19,19 +19,30 @@ interface Course {
   status: string;
   stage: string;
   updatedAt: number;
+  objectiveCount?: number;
+  questionCount?: number;
 }
 
 type SortOrder = 'updated-desc' | 'updated-asc' | 'title';
 
-const StatusVariantMap: Record<string, 'success' | 'warning' | 'info' | 'error' | 'default'> = {
-  draft: 'default',
-  generating: 'info',
-  ready: 'success',
-  reviewing: 'warning',
-  error: 'error',
-  archived: 'default',
-  published: 'success',
-};
+/**
+ * What state is this course actually in?
+ *
+ * The database has a status column, but nothing ever changes it: every course
+ * read "DRAFT / CREATED" forever, including finished ones. What matters to
+ * someone looking at the list is whether there is practice waiting, so the
+ * label is worked out from what the course contains.
+ */
+function courseState(course: Course): {
+  label: string;
+  variant: 'success' | 'warning' | 'info' | 'error' | 'default';
+} {
+  const questions = course.questionCount ?? 0;
+  const objectives = course.objectiveCount ?? 0;
+  if (questions > 0) return { label: 'Ready to practise', variant: 'success' };
+  if (objectives > 0) return { label: 'Being written', variant: 'info' };
+  return { label: 'Not built yet', variant: 'default' };
+}
 
 function formatRelative(date: number): string {
   const diff = Date.now() - date;
@@ -47,10 +58,6 @@ function formatRelative(date: number): string {
     day: 'numeric',
     year: 'numeric',
   });
-}
-
-function statusVariant(status: string): 'success' | 'warning' | 'info' | 'error' | 'default' {
-  return StatusVariantMap[status] ?? 'default';
 }
 
 function labelize(value: string): string {
@@ -89,6 +96,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [naming, setNaming] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOrder>('updated-desc');
 
@@ -135,7 +144,16 @@ export default function DashboardPage() {
     };
   }, []);
 
+  /**
+   * Create a course, named.
+   *
+   * Pressing the button used to save an "Untitled Course" immediately, so
+   * backing out of the builder left a row behind with no name on it. Nothing
+   * is written until there is a subject to write down.
+   */
   const createCourse = useCallback(async () => {
+    const title = newTitle.trim();
+    if (!title) return;
     setCreating(true);
     setError(null);
     try {
@@ -143,7 +161,7 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: 'Untitled Course',
+          title,
           subjectDomain: null,
           targetLevel: null,
         }),
@@ -158,7 +176,7 @@ export default function DashboardPage() {
       setError('We could not create the course. Please try again.');
       setCreating(false);
     }
-  }, [router]);
+  }, [router, newTitle]);
 
   const filteredCourses = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -194,26 +212,56 @@ export default function DashboardPage() {
             Notes, slides, chapters, past papers — anything you revise from.
           </p>
         </div>
-        <Button
-          onClick={createCourse}
-          loading={creating}
-          size="lg"
-          aria-label="Add material"
-        >
-          <svg
-            className="mr-2 h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            aria-hidden="true"
+        {naming ? (
+          <form
+            className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void createCourse();
+            }}
           >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Add material
-        </Button>
+            <input
+              autoFocus
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="What are you studying?"
+              aria-label="What are you studying?"
+              className="h-11 w-full rounded-md border border-line bg-surface px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-64"
+            />
+            <div className="flex gap-2">
+              <Button type="submit" loading={creating} disabled={!newTitle.trim()} size="lg">
+                Start
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                onClick={() => {
+                  setNaming(false);
+                  setNewTitle('');
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <Button onClick={() => setNaming(true)} size="lg" aria-label="Add material">
+            <svg
+              className="mr-2 h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add material
+          </Button>
+        )}
       </div>
 
       {/* Error banner */}
@@ -342,7 +390,7 @@ export default function DashboardPage() {
                 Add the notes, slides or chapters you are revising from. KLAXO turns them
                 into a course with practice you can drill.
               </p>
-              <Button onClick={createCourse} loading={creating} className="mt-5">
+              <Button onClick={() => setNaming(true)} className="mt-5">
                 Add your first material
               </Button>
             </CardContent>
@@ -362,7 +410,7 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredCourses.map((course) => {
-              const variant = statusVariant(course.status);
+              const state = courseState(course);
               return (
                 <Card
                   key={course.id}
@@ -373,8 +421,8 @@ export default function DashboardPage() {
                       <h2 className="line-clamp-2 text-lg font-semibold leading-snug tracking-tight">
                         {course.title}
                       </h2>
-                      <Badge variant={variant} dot className="shrink-0">
-                        {labelize(course.status)}
+                      <Badge variant={state.variant} dot className="shrink-0">
+                        {state.label}
                       </Badge>
                     </div>
 
@@ -391,8 +439,12 @@ export default function DashboardPage() {
                       {course.targetLevel && (
                         <Badge variant="secondary">{labelize(course.targetLevel)}</Badge>
                       )}
-                      {course.stage && (
-                        <Badge variant="outline">{labelize(course.stage)}</Badge>
+                      {(course.questionCount ?? 0) > 0 && (
+                        <Badge variant="outline">
+                          {course.questionCount === 1
+                            ? '1 question'
+                            : `${course.questionCount} questions`}
+                        </Badge>
                       )}
                     </div>
 

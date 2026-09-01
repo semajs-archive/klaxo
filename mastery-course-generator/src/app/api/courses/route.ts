@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUserId } from '@/lib/auth';
-import { createCourse, listCoursesForUser } from '@/db/repo';
+import { createCourse, listCoursesForUser, listObjectives, listQuestions } from '@/db/repo';
 import { toAppError } from '@/lib/errors';
 
 const CreateCourseSchema = z.object({
@@ -24,7 +24,14 @@ const CreateCourseSchema = z.object({
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {
     const userId = await requireUserId();
-    const userCourses = listCoursesForUser(userId);
+    // The stored status column is set once at creation and never moves, so a
+    // finished course still called itself a draft. What the list actually needs
+    // to say is whether there is anything to practise yet, and that is a count.
+    const userCourses = listCoursesForUser(userId).map((c) => ({
+      ...c,
+      objectiveCount: listObjectives(c.id).length,
+      questionCount: listQuestions(c.id).length,
+    }));
     return NextResponse.json({ courses: userCourses });
   } catch (err) {
     const appErr = toAppError(err);
