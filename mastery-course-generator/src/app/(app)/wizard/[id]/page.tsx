@@ -185,6 +185,7 @@ export default function WizardPage() {
   const [subjectDomain, setSubjectDomain] = useState('');
   const [targetLevel, setTargetLevel] = useState('');
   const [preferencesNote, setPreferencesNote] = useState('');
+  const [preferencesError, setPreferencesError] = useState<string | null>(null);
 
   // Navigation / stepper.
   const [currentStep, setCurrentStep] = useState<StepId>('info');
@@ -204,6 +205,7 @@ export default function WizardPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisMessage, setAnalysisMessage] = useState('');
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [knowledgePackage, setKnowledgePackage] = useState<KnowledgePackage | null>(null);
   const [fragments, setFragments] = useState<SourceFragment[]>([]);
   const [editTitle, setEditTitle] = useState('');
@@ -323,7 +325,9 @@ export default function WizardPage() {
   }, [courseId]);
 
   const saveCourse = useCallback(
-    async (patch: Record<string, string>) => {
+    // Returns whether the save actually landed, so callers never tick a step
+    // green off the back of a rejected request.
+    async (patch: Record<string, unknown>): Promise<boolean> => {
       setSaving(true);
       try {
         const res = await fetch(`/api/courses/${courseId}`, {
@@ -337,8 +341,10 @@ export default function WizardPage() {
           setCourse(data.course);
           courseRef.current = data.course;
         }
+        return true;
       } catch {
         // Non-fatal autosave error; leave local state intact.
+        return false;
       } finally {
         if (mountedRef.current) setSaving(false);
       }
@@ -486,6 +492,7 @@ export default function WizardPage() {
     setAnalyzing(true);
     setAnalysisProgress(0);
     setAnalysisMessage('Starting analysis…');
+    setAnalysisError(null);
     setStepError('understanding', false);
     try {
       const res = await fetch(`/api/courses/${courseId}/analyze`, {
@@ -513,11 +520,13 @@ export default function WizardPage() {
         (job) => {
           setStepError('understanding', true);
           setAnalysisMessage(job.message ?? 'Analysis failed');
+          setAnalysisError(job.message ?? 'It could not read your material.');
         },
       );
     } catch (err) {
       setStepError('understanding', true);
       setAnalysisMessage((err as Error).message);
+      setAnalysisError((err as Error).message);
     } finally {
       setAnalyzing(false);
     }
@@ -559,8 +568,16 @@ export default function WizardPage() {
   };
 
   const handleSavePreferences = async () => {
-    await saveCourse({ preferences: JSON.stringify({ note: preferencesNote }) });
-    markCompleted('preferences');
+    // The API takes an object here and stringifies it itself. Sending a string
+    // was rejected with a 400 and the tick below still ran, so the step looked
+    // saved when nothing had been.
+    const ok = await saveCourse({ preferences: { note: preferencesNote } });
+    if (ok) {
+      setPreferencesError(null);
+      markCompleted('preferences');
+    } else {
+      setPreferencesError('That did not save. Try again.');
+    }
   };
 
   const handleGenerateBlueprint = async () => {
@@ -877,8 +894,25 @@ export default function WizardPage() {
                       : 'Analyze your sources to extract the course structure.'}
                   </p>
                   <Button onClick={handleAnalyze} disabled={sources.length === 0} loading={analyzing}>
-                    Read my material
+                    {analysisError ? 'Try again' : 'Read my material'}
                   </Button>
+
+                  {/* Rendered outside the `analyzing` guard on purpose: the guard
+                      unmounts the moment the job settles, so an error shown there
+                      would vanish before anyone could read it. */}
+                  {analysisError && (
+                    <div className="mx-auto mt-6 max-w-[52ch] rounded-lg border border-error/30 bg-error-subtle p-4 text-left">
+                      <p className="text-sm font-semibold text-error-subtle-foreground">
+                        It could not read your material.
+                      </p>
+                      <p className="mt-1.5 text-sm text-error-subtle-foreground">{analysisError}</p>
+                      <div className="mt-4">
+                        <Button variant="outline" size="sm" onClick={() => goToStep('sources')}>
+                          Back to your material
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -938,12 +972,15 @@ export default function WizardPage() {
                   onChange={(e) => setPreferencesNote(e.target.value)}
                   onBlur={handleSavePreferences}
                   rows={4}
-                  placeholder="Go slowly on the maths. Use examples from real breaches."
+                  placeholder="Go slowly on the hard parts, and use plenty of worked examples."
                   hint="Leave it blank if you have nothing to add."
                 />
+                {preferencesError && (
+                  <p className="mt-3 text-sm font-medium text-error">{preferencesError}</p>
+                )}
               </CardContent>
               <CardFooter>
-                <Button onClick={handleSavePreferences} variant="secondary" size="sm">
+                <Button onClick={handleSavePreferences} variant="outline" size="sm">
                   Save
                 </Button>
               </CardFooter>
