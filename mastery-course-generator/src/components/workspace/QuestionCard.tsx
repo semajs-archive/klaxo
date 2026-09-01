@@ -103,7 +103,7 @@ export default function QuestionCard({
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit() || submitting) return;
+    if (!canSubmit() || submitting || feedback) return;
     const response = buildResponse();
     const durationMs = startedAtRef.current != null ? Date.now() - startedAtRef.current : undefined;
 
@@ -132,7 +132,7 @@ export default function QuestionCard({
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, submitting, buildResponse, courseId, question.id, question.objectiveId]);
+  }, [canSubmit, submitting, feedback, buildResponse, courseId, question.id, question.objectiveId]);
 
   const toggleOrder = useCallback((item: string) => {
     setFeedback(null);
@@ -165,7 +165,7 @@ export default function QuestionCard({
 
       {objectiveStatement && (
         <p className="mb-3 text-xs text-muted-foreground">
-          Objective: <span className="font-medium">{objectiveStatement}</span>
+          This tests: <span className="font-medium">{objectiveStatement}</span>
         </p>
       )}
 
@@ -179,12 +179,14 @@ export default function QuestionCard({
               <button
                 key={label + idx}
                 type="button"
+                disabled={Boolean(feedback)}
                 onClick={() => {
                   setMcqSelection(active ? null : label);
                   resetForKind();
                 }}
                 className={cn(
-                  'flex items-start gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors',
+                  // The most-tapped control in the app, so it clears 44px on a phone.
+                  'flex min-h-11 items-start gap-2 rounded-md border px-3 py-2.5 text-left text-sm transition-colors sm:min-h-0 sm:py-2',
                   active
                     ? 'border-primary bg-primary/5 text-foreground'
                     : 'border-border hover:border-primary/40 hover:bg-accent',
@@ -275,10 +277,11 @@ export default function QuestionCard({
         <Button
           onClick={() => void handleSubmit()}
           loading={submitting}
-          disabled={!canSubmit()}
+          disabled={!canSubmit() || Boolean(feedback)}
+          className="min-h-11 sm:min-h-9"
           size="sm"
         >
-          Submit
+          {feedback ? 'Answered' : 'Submit'}
         </Button>
         {requestError && <span className="text-sm text-error">{requestError}</span>}
       </div>
@@ -304,7 +307,7 @@ export default function QuestionCard({
 
           {feedback.result.attempt.misconceptionTag && (
             <p className="mb-1 text-xs">
-              <span className="font-medium">Misconception:</span>{' '}
+              <span className="font-medium">Looks like you thought:</span>{' '}
               {feedback.result.attempt.misconceptionTag}
             </p>
           )}
@@ -315,7 +318,7 @@ export default function QuestionCard({
 
           <div className="mt-2 border-t border-border/50 pt-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">Updated mastery:</span>
+              <span className="text-xs text-muted-foreground">Where you are on this:</span>
               <Badge variant={masteryVariant(feedback.result.mastery.state)} dot>
                 {masteryLabel(feedback.result.mastery.state)}
               </Badge>

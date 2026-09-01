@@ -35,7 +35,6 @@ import {
   formatDate,
   masteryLabel,
   masteryVariant,
-  recommendationLabel,
   relativeDays,
   unitDisplayTitle,
 } from '@/components/workspace/helpers';
@@ -222,22 +221,15 @@ function Workspace() {
         )}
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold">{course.title}</h1>
-          {access === 'owner' && (
-            <>
-              <Badge variant="outline" dot>
-                {course.status}
-              </Badge>
-              <Badge variant="secondary">{course.stage}</Badge>
-            </>
-          )}
-          {access === 'owner' && (
-            <div className="ml-auto">
-            </div>
+          {access === 'owner' && workspace.questions.length > 0 && (
+            <Badge variant="success" dot>
+              Ready to practise
+            </Badge>
           )}
         </div>
-        <p className="mt-1 text-muted-foreground">
-          {course.description || 'No description'}
-        </p>
+        {course.description && (
+          <p className="mt-1 text-muted-foreground">{course.description}</p>
+        )}
       </div>
 
       <TabStrip
@@ -415,7 +407,7 @@ function OverviewTab({
         <Card>
           <CardHeader>
             <CardTitle>Progress</CardTitle>
-            <CardDescription>Mastery readiness across all objectives</CardDescription>
+            <CardDescription>How much of this course you have nailed down</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-2 flex items-center justify-between text-sm">
@@ -435,19 +427,22 @@ function OverviewTab({
 
         <Card>
           <CardHeader>
-            <CardTitle>Status</CardTitle>
-            <CardDescription>Course & generation summary</CardDescription>
+            <CardTitle>Where this course is up to</CardTitle>
+            <CardDescription>What has been written so far</CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="space-y-2 text-sm">
               <Row label="Subject" value={course.subjectDomain ?? '—'} />
               <Row label="Target level" value={course.targetLevel ?? '—'} />
-              <Row label="Status" value={course.status} />
-              <Row label="Stage" value={course.stage} />
               <Row
-                label="Generated lessons"
-                value={`${generatedLessons} / ${workspace.lessons.length}`}
+                label="Lessons written"
+                value={
+                  generatedLessons === workspace.lessons.length
+                    ? `${workspace.lessons.length}`
+                    : `${generatedLessons} of ${workspace.lessons.length}`
+                }
               />
+              <Row label="Practice questions" value={`${workspace.questions.length}`} />
             </dl>
           </CardContent>
         </Card>
@@ -488,7 +483,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium capitalize">{value}</dd>
+      <dd className="text-right font-medium">{value}</dd>
     </div>
   );
 }
@@ -557,9 +552,11 @@ function CurriculumTab({
               onClick={() => toggleUnit(unit.id)}
               className="flex w-full items-center justify-between gap-3 rounded-lg px-6 py-4 text-left hover:bg-accent/40"
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Unit {unit.ordinal + 1}</span>
+              <div className="min-w-0">
+                <span className="block text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  Unit {unit.ordinal + 1}
+                </span>
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
                   <h3 className="text-lg font-semibold">{unitDisplayTitle(unit.title)}</h3>
                   <Badge variant="outline">{unit.classification}</Badge>
                 </div>
@@ -567,8 +564,20 @@ function CurriculumTab({
                   <p className="mt-1 text-sm text-muted-foreground">{unit.description}</p>
                 )}
               </div>
-              <span className="text-xs text-muted-foreground">
-                {objectives.length} objectives
+              <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                {objectives.length === 1 ? '1 objective' : `${objectives.length} objectives`}
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
               </span>
             </button>
 
@@ -591,8 +600,8 @@ function CurriculumTab({
                               </Badge>
                             )}
                             <span className="font-medium">{o.title}</span>
-                            <DifficultyDots value={o.difficulty} />
-                            <ImportanceDots value={o.importance} />
+                            <Rating label="Difficulty" value={o.difficulty} />
+                            <Rating label="Importance" value={o.importance} />
                             <Badge variant="outline">{o.category}</Badge>
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">{o.statement}</p>
@@ -618,41 +627,18 @@ function CurriculumTab({
   );
 }
 
-function DifficultyDots({ value }: { value: number }) {
+/**
+ * The model rates every objective 1-5 for how hard it is and how much it
+ * matters. Two rows of five dots labelled "Diff" and "Imp" said nothing to
+ * anyone who had not read the code, so the numbers are simply written out.
+ */
+function Rating({ label, value }: { label: string; value: number }) {
   return (
-    <span className="inline-flex items-center gap-0.5" title={`Difficulty: ${value}/5`}>
-      <span className="mr-0.5 text-[10px] text-muted-foreground">Diff</span>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <span
-          key={i}
-          className={cn(
-            'h-1.5 w-1.5 rounded-full',
-            i <= value ? 'bg-primary' : 'bg-muted',
-          )}
-        />
-      ))}
+    <span className="text-xs text-muted-foreground">
+      {label} {value}/5
     </span>
   );
 }
-
-function ImportanceDots({ value }: { value: number }) {
-  return (
-    <span className="inline-flex items-center gap-0.5" title={`Importance: ${value}/5`}>
-      <span className="mr-0.5 text-[10px] text-muted-foreground">Imp</span>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <span
-          key={i}
-          className={cn(
-            'h-1.5 w-1.5 rounded-full',
-            i <= value ? 'bg-warning' : 'bg-muted',
-          )}
-        />
-      ))}
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ Lessons ---- */
 
 function LessonsTab({
   workspace,
@@ -953,7 +939,7 @@ function MasteryTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <StatCard label="Mastered" value={`${mastery.masteredCount}`} />
         <StatCard label="Objectives" value={`${mastery.objectiveCount}`} />
         <StatCard
@@ -962,20 +948,43 @@ function MasteryTab({
         />
       </div>
 
-      {/* Objective mastery table */}
+      {/* Objective mastery. Two layouts: a table needs about 570px, and on a
+          phone that meant two of six columns visible and the most useful one
+          (when it is next due) hidden off the right edge. */}
       <Card>
         <CardHeader>
-          <CardTitle>Objective mastery</CardTitle>
-          <CardDescription>Per-objective evidence and schedule</CardDescription>
+          <CardTitle>What you know</CardTitle>
+          <CardDescription>How solid each objective is, and when it comes back around</CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+
+        <CardContent className="grid gap-3 sm:hidden">
+          {mastery.records.map((r) => (
+            <div key={r.objectiveId} className="border-b border-hairline pb-3 last:border-0 last:pb-0">
+              <p className="text-sm font-medium leading-snug">
+                {r.objectiveStatement ?? r.objectiveId}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <Badge variant={masteryVariant(r.state)} dot>
+                  {masteryLabel(r.state)}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {Math.round(r.score * 100)}% · answered {r.evidenceCount}
+                  {r.streak > 1 ? ` · ${r.streak} in a row` : ''}
+                </span>
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">{relativeDays(r.nextReviewAt)}</p>
+            </div>
+          ))}
+        </CardContent>
+
+        <CardContent className="hidden overflow-x-auto sm:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th className="py-2 pr-3">Objective</th>
                 <th className="py-2 pr-3">State</th>
                 <th className="py-2 pr-3">Score</th>
-                <th className="py-2 pr-3">Evidence</th>
+                <th className="py-2 pr-3">Answered</th>
                 <th className="py-2 pr-3">Streak</th>
                 <th className="py-2">Review</th>
               </tr>
@@ -1007,32 +1016,28 @@ function MasteryTab({
       {/* Recommendations */}
       <div className="grid gap-4 lg:grid-cols-2">
         <RecommendationCard
-          title="Remediation"
-          message="Objectives flagged for review due to incorrect answers."
+          title="Go back over these"
+          message="You have got these wrong recently."
           records={recs.remediation}
-          empty="No remediation needed right now."
-          action="remediate"
+          empty="Nothing to go back over."
         />
         <RecommendationCard
-          title="More practice"
-          message="Objectives currently being introduced or practiced."
+          title="Still working on"
+          message="Started, but not solid yet."
           records={recs.morePractice}
-          empty="No objectives currently in practice."
-          action="more_practice"
+          empty="Nothing in progress."
         />
         <RecommendationCard
-          title="Advancement"
-          message="Provisional objectives ready to advance."
+          title="Nearly there"
+          message="A couple more right answers and these are done."
           records={recs.advancement}
-          empty="No objectives ready to advance."
-          action="advance"
+          empty="Nothing on the edge of being finished."
         />
         <RecommendationCard
-          title="Cumulative review"
-          message="Mastered objectives approaching their review window."
+          title="Due for a re-check"
+          message="You knew these once. Time to check they stuck."
           records={recs.cumulativeReview}
-          empty="No cumulative review due."
-          action="cumulative_review"
+          empty="Nothing due yet."
         />
       </div>
     </div>
@@ -1042,9 +1047,9 @@ function MasteryTab({
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <Card>
-      <CardContent className="py-5">
-        <div className="text-3xl font-bold">{value}</div>
-        <div className="text-sm text-muted-foreground">{label}</div>
+      <CardContent className="px-3 py-4 sm:px-6 sm:py-5">
+        <div className="text-2xl font-bold sm:text-3xl">{value}</div>
+        <div className="text-xs leading-snug text-muted-foreground sm:text-sm">{label}</div>
       </CardContent>
     </Card>
   );
@@ -1055,13 +1060,11 @@ function RecommendationCard({
   message,
   records,
   empty,
-  action,
 }: {
   title: string;
   message: string;
   records: { objectiveId: string; objectiveStatement?: string | null }[];
   empty: string;
-  action: string;
 }) {
   return (
     <Card>
@@ -1083,11 +1086,6 @@ function RecommendationCard({
               </li>
             ))}
           </ul>
-        )}
-        {action && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {recommendationLabel(action as never)}
-          </p>
         )}
       </CardContent>
     </Card>
@@ -1231,7 +1229,9 @@ function VersionsTab({
         <Card>
           <CardHeader>
             <CardTitle>New version</CardTitle>
-            <CardDescription>Snapshot the current curriculum as a new draft.</CardDescription>
+            <CardDescription>
+              Save how the course looks right now, so you can come back to it.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Input
@@ -1255,8 +1255,8 @@ function VersionsTab({
 
       {versions.length === 0 ? (
         <EmptyState
-          title="No versions yet"
-          message="Create a version to snapshot the current curriculum."
+          title="No saved copies yet"
+          message="Save a copy before you change a course, so you can undo it."
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -1315,7 +1315,7 @@ function VersionRow({
               {version.label ? ` — ${version.label}` : ''}
             </span>
             <Badge variant={version.status === 'published' ? 'success' : 'secondary'}>
-              {version.status}
+              {version.status === 'published' ? 'kept' : version.status}
             </Badge>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
@@ -1326,7 +1326,7 @@ function VersionRow({
           </div>
           {version.publishedAt && (
             <div className="text-xs text-muted-foreground">
-              Published {formatDate(version.publishedAt)}
+              Kept {formatDate(version.publishedAt)}
             </div>
           )}
           {version.notes && (
@@ -1337,11 +1337,11 @@ function VersionRow({
         <div className="flex gap-2">
           {version.status !== 'published' && (
             <Button size="sm" variant="outline" onClick={onPublish} loading={busy}>
-              Publish
+              Mark as the good one
             </Button>
           )}
           <Button size="sm" variant="ghost" onClick={onRestore} loading={busy}>
-            Restore
+            Go back to this
           </Button>
         </div>
       </CardContent>

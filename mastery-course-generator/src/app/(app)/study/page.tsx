@@ -34,6 +34,7 @@ interface CourseStudy {
   mastered: number;
   due: number;
   weak: { id: string; statement: string }[];
+  /** Has questions to answer. Objectives alone are not something to revise. */
   ready: boolean;
 }
 
@@ -62,16 +63,22 @@ export default function StudyPage() {
           courses.map(async (course): Promise<CourseStudy> => {
             const empty = { course, total: 0, mastered: 0, due: 0, weak: [], ready: false };
             try {
-              const masteryRes = await fetch(`/api/courses/${course.id}/mastery`);
+              const [masteryRes, workspaceRes] = await Promise.all([
+                fetch(`/api/courses/${course.id}/mastery`),
+                fetch(`/api/courses/${course.id}/workspace`),
+              ]);
               if (!masteryRes.ok) return empty;
               const mastery = await masteryRes.json();
+
+              // "Ready" has to mean there is something to answer. Judging it on
+              // objectives alone sent people to an empty practice screen with
+              // no way forward.
+              const workspace = workspaceRes.ok ? await workspaceRes.json() : null;
+              const questionCount: number = (workspace?.questions ?? []).length;
 
               const records: MasteryRecord[] = mastery.records ?? [];
               const due = (mastery.recommendations?.cumulativeReview ?? []).length;
 
-              // A course is built once it HAS objectives. Mastery records only
-              // appear once something has been attempted, so counting those
-              // would call a finished course unbuilt until its first question.
               const objectiveCount: number = mastery.objectiveCount ?? 0;
 
               return {
@@ -86,7 +93,7 @@ export default function StudyPage() {
                     id: r.objectiveId,
                     statement: r.objectiveStatement ?? 'Untitled objective',
                   })),
-                ready: objectiveCount > 0,
+                ready: questionCount > 0,
               };
             } catch {
               return empty;
@@ -124,14 +131,21 @@ export default function StudyPage() {
 
   return (
     <div className="grid gap-8">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Study</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-[-0.03em] sm:text-4xl">
-          What to work on.
-        </h1>
-        <p className="mt-2 max-w-[54ch] font-serif text-[1.0625rem] leading-relaxed text-foreground-soft">
-          Ordered by what is due for review, then by what you are weakest on.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Study</p>
+          <h1 className="mt-2 font-display text-3xl font-bold tracking-[-0.03em] sm:text-4xl">
+            What to work on.
+          </h1>
+          <p className="mt-2 max-w-[54ch] font-serif text-[1.0625rem] leading-relaxed text-foreground-soft">
+            Ordered by what is due for review, then by what you are weakest on.
+          </p>
+        </div>
+        {items.length > 0 && (
+          <Link href="/dashboard">
+            <Button variant="outline">Add material</Button>
+          </Link>
+        )}
       </header>
 
       {error && (
@@ -189,7 +203,7 @@ function StudyCard({ item }: { item: CourseStudy }) {
               </p>
             ) : (
               <p className="mt-1 text-sm text-muted-foreground">
-                Not built yet — finish it and practice appears here.
+                Not finished yet. Practice appears here once it has questions.
               </p>
             )}
           </div>

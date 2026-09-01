@@ -106,7 +106,17 @@ export async function GET(
     if (!course) throw notFound('Course not found');
     if (course.userId !== userId) throw notFound('Course not found');
 
-    const sources = listSourceDocuments(id);
+    // Send a short preview instead of the whole extracted text. The list only
+    // needs enough to recognise a source by, and typed notes have no filename
+    // to show, so without this they were listed by their database id.
+    const sources = listSourceDocuments(id).map((s) => {
+      const { extractedText, ...rest } = s;
+      const text = (extractedText ?? '').replace(/\s+/g, ' ').trim();
+      return {
+        ...rest,
+        preview: text.length > 100 ? `${text.slice(0, 100)}\u2026` : text,
+      };
+    });
     return NextResponse.json({ sources });
   } catch (err) {
     const appErr = toAppError(err);

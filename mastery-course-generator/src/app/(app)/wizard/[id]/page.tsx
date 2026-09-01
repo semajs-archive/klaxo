@@ -141,14 +141,15 @@ interface WorkspaceData {
 /* ------------------------------------------------------------ constants ---- */
 
 const WIZARD_STEPS = [
-  { id: 'info', label: 'Course Info' },
-  { id: 'sources', label: 'Sources' },
-  { id: 'understanding', label: 'Understanding' },
-  { id: 'preferences', label: 'Preferences' },
-  { id: 'blueprint', label: 'Blueprint' },
-  { id: 'generation', label: 'Generation' },
-  { id: 'qa', label: 'QA' },
-  { id: 'workspace', label: 'Workspace' },
+  // Named for what happens on them, not for the pipeline stage behind them.
+  { id: 'info', label: 'Subject' },
+  { id: 'sources', label: 'Your material' },
+  { id: 'understanding', label: 'Check' },
+  { id: 'preferences', label: 'How you learn' },
+  { id: 'blueprint', label: 'The plan' },
+  { id: 'generation', label: 'Write it' },
+  { id: 'qa', label: 'Marking' },
+  { id: 'workspace', label: 'Done' },
 ] as const;
 
 type StepId = (typeof WIZARD_STEPS)[number]['id'];
@@ -166,6 +167,9 @@ const GENERATION_PIPELINE: { stage: string; label: string }[] = [
 const TERMINAL_STATES = new Set(['COMPLETED', 'FAILED', 'CANCELLED']);
 
 const STEP_KEYS = Object.keys(Object.fromEntries(WIZARD_STEPS.map((s) => [s.id, true]))) as StepId[];
+
+/** Steps you can walk straight past without doing anything. */
+const OPTIONAL_STEPS = new Set<StepId>(['preferences']);
 
 /* ---------------------------------------------------------------- page ---- */
 
@@ -185,6 +189,7 @@ export default function WizardPage() {
   // Navigation / stepper.
   const [currentStep, setCurrentStep] = useState<StepId>('info');
   const [completedSteps, setCompletedSteps] = useState<StepId[]>([]);
+  /** Set once the first load finishes, so progress can be read off the course. */
   const [warningSteps, setWarningSteps] = useState<StepId[]>([]);
   const [errorSteps, setErrorSteps] = useState<StepId[]>([]);
 
@@ -211,6 +216,9 @@ export default function WizardPage() {
   const [blueprinting, setBlueprinting] = useState(false);
   const [blueprintProgress, setBlueprintProgress] = useState(0);
   const [blueprintMessage, setBlueprintMessage] = useState('');
+  /** Kept separately from the progress message: that one disappears when the
+      job stops running, which is exactly when a failure needs to be read. */
+  const [blueprintError, setBlueprintError] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const alreadyBuilt = (workspace?.objectives.length ?? 0) > 0;
   const [replanning, setReplanning] = useState(false);
@@ -227,6 +235,8 @@ export default function WizardPage() {
   // Refs to avoid stale closures inside the polling loop.
   const mountedRef = useRef(true);
   const courseRef = useRef<Course | null>(null);
+  const kpRef = useRef<KnowledgePackage | null>(null);
+  const workspaceRef = useRef<WorkspaceData | null>(null);
   const activePollRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -275,9 +285,14 @@ export default function WizardPage() {
 
   const goToStep = useCallback(
     (step: StepId) => {
-      if (canVisit(step)) setCurrentStep(step);
+      if (!canVisit(step)) return;
+      const from = STEP_KEYS.indexOf(currentStep);
+      const to = STEP_KEYS.indexOf(step);
+      // Stepping forward past an optional step counts as finishing it.
+      if (to > from && OPTIONAL_STEPS.has(currentStep)) markCompleted(currentStep);
+      setCurrentStep(step);
     },
-    [canVisit],
+    [canVisit, currentStep, markCompleted],
   );
 
   const fetchCourse = useCallback(async () => {
@@ -384,6 +399,7 @@ export default function WizardPage() {
       const data = await res.json();
       if (!mountedRef.current) return;
       const kp: KnowledgePackage | null = data.knowledgePackage ?? null;
+      kpRef.current = kp;
       setKnowledgePackage(kp);
       setFragments((data.fragments ?? []) as SourceFragment[]);
       if (kp) {
@@ -406,13 +422,15 @@ export default function WizardPage() {
       if (!res.ok) return;
       const data = await res.json();
       if (mountedRef.current) {
-        setWorkspace({
+        const next = {
           units: data.units ?? [],
           objectives: data.objectives ?? [],
           lessons: data.lessons ?? [],
           assessments: data.assessments ?? [],
           questions: data.questions ?? [],
-        });
+        };
+        workspaceRef.current = next;
+        setWorkspace(next);
       }
     } catch {
       /* ignore */
@@ -421,10 +439,40 @@ export default function WizardPage() {
 
   /* ------------------------------------------------------- initial load ---- */
 
+  /**
+   * Work out what has already been done from the course itself.
+   *
+   * Completion used to live only in component state, so reopening a finished
+   * course showed every step padlocked, as though nothing had ever been built.
+   * The course knows perfectly well what it has: sources, an approved
+   * interpretation, units, lessons. Read it from there, once, on load, and drop
+   * the reader at the first thing still outstanding.
+   */
+  const restoreProgress = useCallback(async () => {
+    let sourceCount = 0;
+    try {
+      const res = await fetch(`/api/courses/${courseId}/sources`);
+      if (res.ok) sourceCount = ((await res.json()).sources ?? []).length;
+    } catch {
+      /* a failed count just means we assume nothing was added */
+    }
+    if (!mountedRef.current) return;
+
+    const done: StepId[] = ['info'];
+    if (sourceCount > 0) done.push('sources');
+    if (kpRef.current?.status === 'approved') done.push('understanding');
+    if ((workspaceRef.current?.units.length ?? 0) > 0) done.push('preferences', 'blueprint');
+    if ((workspaceRef.current?.lessons.length ?? 0) > 0) done.push('generation', 'qa');
+
+    setCompletedSteps((prev) => Array.from(new Set([...prev, ...done])));
+    setCurrentStep(STEP_KEYS.find((step) => !done.includes(step)) ?? 'workspace');
+  }, [courseId]);
+
   useEffect(() => {
     fetchCourse()
       .then(fetchKnowledgePackage)
       .then(fetchWorkspace)
+      .then(restoreProgress)
       .catch(() => {
         if (mountedRef.current) setLoading(false);
       });
@@ -512,12 +560,14 @@ export default function WizardPage() {
 
   const handleSavePreferences = async () => {
     await saveCourse({ preferences: JSON.stringify({ note: preferencesNote }) });
+    markCompleted('preferences');
   };
 
   const handleGenerateBlueprint = async () => {
     setBlueprinting(true);
     setBlueprintProgress(0);
     setBlueprintMessage('Designing curriculum…');
+    setBlueprintError(null);
     setStepError('blueprint', false);
     try {
       const res = await fetch(`/api/courses/${courseId}/jobs`, {
@@ -545,6 +595,7 @@ export default function WizardPage() {
         (job) => {
           setStepError('blueprint', true);
           setBlueprintMessage(job.message ?? 'Blueprint failed');
+          setBlueprintError(job.message ?? 'The blueprint could not be built.');
         },
       );
     } catch (err) {
@@ -708,7 +759,9 @@ export default function WizardPage() {
           ← Back to Dashboard
         </Link>
         <h1 className="text-3xl font-bold">{course.title}</h1>
-        <p className="text-muted-foreground">{course.description || 'No description'}</p>
+        {course.description && (
+          <p className="text-muted-foreground">{course.description}</p>
+        )}
       </div>
 
       <StepIndicator
@@ -723,7 +776,7 @@ export default function WizardPage() {
         {currentStep === 'info' && (
           <WizardStep
             title="Course Information"
-            description="Define the basic details of your course. Changes autosave on blur."
+            description="What are you revising? Everything saves as you type."
           >
             <div className="space-y-4">
               <Input
@@ -764,19 +817,19 @@ export default function WizardPage() {
 
         {currentStep === 'sources' && (
           <WizardStep
-            title="Source Material"
-            description="Upload syllabi, textbooks, lecture notes, or describe your course in natural language."
+            title="Add your material"
+            description="Notes, slides, chapters, past papers, a photo of a page. Or just type what the topic covers."
           >
             <FileUpload courseId={courseId} onSourcesChange={setSources} />
             {sources.length > 0 && (
               <div className="mt-4 flex items-center gap-2">
                 <Badge variant="success" dot>
-                  {sources.length} source{sources.length === 1 ? '' : 's'} ready
+                  {sources.length === 1 ? '1 thing added' : `${sources.length} things added`}
                 </Badge>
                 <p className="text-sm text-muted-foreground">
                   {alreadyBuilt
                     ? 'Update the course below, or carry on through the steps.'
-                    : 'Proceed to Source Understanding to analyze them.'}
+                    : 'Next it reads all of this and tells you what it found.'}
                 </p>
               </div>
             )}
@@ -812,8 +865,8 @@ export default function WizardPage() {
 
         {currentStep === 'understanding' && (
           <WizardStep
-            title="Source Understanding"
-            description="Extract structured knowledge from your source material, then approve the interpretation."
+            title="Check it read your material properly"
+            description="This is what it thinks your material covers. Read it, and say yes if it looks right. Nothing gets written until you do."
           >
             {!knowledgePackage && !analyzing && (
               <Card>
@@ -824,7 +877,7 @@ export default function WizardPage() {
                       : 'Analyze your sources to extract the course structure.'}
                   </p>
                   <Button onClick={handleAnalyze} disabled={sources.length === 0} loading={analyzing}>
-                    Analyze Sources
+                    Read my material
                   </Button>
                 </CardContent>
               </Card>
@@ -866,12 +919,12 @@ export default function WizardPage() {
 
         {currentStep === 'preferences' && (
           <WizardStep
-            title="Course Preferences"
-            description="Capture any additional guidance before generating the curriculum."
+            title="How you want to be taught"
+            description="Optional. Anything you say here changes how the lessons are written."
           >
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Detected summary</CardTitle>
+                <CardTitle className="text-base">What it thinks you are studying</CardTitle>
                 <CardDescription>
                   {knowledgePackage
                     ? `${knowledgePackage.detectedSubject ?? knowledgePackage.analysis.subject ?? 'general'} · ${knowledgePackage.detectedLevel ?? knowledgePackage.analysis.level ?? 'introductory'}`
@@ -880,17 +933,18 @@ export default function WizardPage() {
               </CardHeader>
               <CardContent>
                 <Textarea
-                  label="Preferences note"
+                  label="Anything you want it to know"
                   value={preferencesNote}
                   onChange={(e) => setPreferencesNote(e.target.value)}
                   onBlur={handleSavePreferences}
                   rows={4}
-                  hint="e.g., pacing, tone, or depth preferences applied during generation."
+                  placeholder="Go slowly on the maths. Use examples from real breaches."
+                  hint="Leave it blank if you have nothing to add."
                 />
               </CardContent>
               <CardFooter>
                 <Button onClick={handleSavePreferences} variant="secondary" size="sm">
-                  Save preferences
+                  Save
                 </Button>
               </CardFooter>
             </Card>
@@ -899,18 +953,38 @@ export default function WizardPage() {
 
         {currentStep === 'blueprint' && (
           <WizardStep
-            title="Curriculum Blueprint"
-            description="Generate the unit → topic → objective hierarchy from your approved interpretation."
+            title="The plan"
+            description="The order it will teach things in, so nothing comes before what it depends on. Change it here if you disagree."
           >
             {!workspace || workspace.units.length === 0 ? (
               <Card>
                 <CardContent className="pt-6 text-center">
                   <p className="text-muted-foreground mb-4">
-                    Generate the curriculum blueprint to see units and objectives.
+                    Plan the course to see the units and objectives it will cover.
                   </p>
                   <Button onClick={handleGenerateBlueprint} loading={blueprinting} disabled={blueprinting}>
-                    Generate Blueprint
+                    Plan the course
                   </Button>
+
+                  {blueprintError && (
+                    <div className="mx-auto mt-6 max-w-[52ch] rounded-lg border border-error/30 bg-error-subtle p-4 text-left">
+                      <p className="text-sm font-semibold text-error-subtle-foreground">
+                        It could not plan the course.
+                      </p>
+                      <p className="mt-1.5 text-sm text-error-subtle-foreground">{blueprintError}</p>
+                      {/* Almost always the same cause, so say what to do about it. */}
+                      <p className="mt-3 text-sm text-error-subtle-foreground">
+                        This usually means the material has not been read and approved yet. Go back
+                        to Sources, add what you are studying from, then approve what it found on
+                        the next step.
+                      </p>
+                      <div className="mt-4">
+                        <Button variant="outline" size="sm" onClick={() => goToStep('sources')}>
+                          Back to Sources
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
@@ -949,7 +1023,7 @@ export default function WizardPage() {
         {currentStep === 'qa' && (
           <WizardStep
             title="Quality Assurance"
-            description="Review the outcome of the QA pass."
+            description="A second pass reads the course back and rewrites the weak parts. This is what it found."
           >
             <QaSummary workspace={workspace} warning={qaWarning} courseId={courseId} />
           </WizardStep>
@@ -1164,13 +1238,23 @@ function KnowledgePackageReview(props: {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
-        <Button onClick={onApprove} loading={approving} disabled={isApproved}>
-          {isApproved ? 'Approved' : 'Approve interpretation'}
-        </Button>
-        <Button onClick={onReanalyze} variant="outline" disabled={approving}>
-          Re-analyze
-        </Button>
+      {/* Nothing downstream works until this is approved, and the failure it
+          causes is three steps away, so say so before it happens. */}
+      <div className="mt-6 rounded-lg border border-border bg-secondary/50 p-4">
+        <p className="text-sm font-semibold">Does that match your material?</p>
+        <p className="mt-1 max-w-[60ch] text-sm text-muted-foreground">
+          {isApproved
+            ? 'Approved. You can carry on to the plan.'
+            : 'Say yes and it starts building the course. If it has missed something or got it wrong, read it again after adding more material. Nothing is written until you approve.'}
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button onClick={onApprove} loading={approving} disabled={isApproved}>
+            {isApproved ? 'Approved' : 'Yes, that is my material'}
+          </Button>
+          <Button onClick={onReanalyze} variant="outline" disabled={approving}>
+            Read it again
+          </Button>
+        </div>
       </div>
     </div>
   );
