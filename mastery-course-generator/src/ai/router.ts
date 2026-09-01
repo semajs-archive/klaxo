@@ -146,34 +146,110 @@ export async function generateStructured<T extends z.ZodTypeAny>(
 }
 
 /**
- * Parse JSON robustly, handling markdown code fences.
+ * Strip a reasoning model's scratch work from a completion.
+ *
+ * Reasoning models — NVIDIA Nemotron, DeepSeek-R1, Qwen3 and friends — emit
+ * their deliberation in a <think> block before the answer, and the default
+ * model in `.env.example` is one of them. That deliberation routinely contains
+ * braces, because the model is talking itself through the very schema we asked
+ * for. Scanning the raw reply for JSON therefore finds the sketch instead of
+ * the answer, and the sketch is not valid JSON.
+ */
+export function stripReasoning(content: string): string {
+  let out = content;
+
+  // Everything up to and including the last closing tag is deliberation. This
+  // also covers models that emit a stray `</think>` with no opening tag.
+  let lastClose = -1;
+  for (const match of content.matchAll(/<\/(?:think|thinking|reasoning)>/gi)) {
+    lastClose = (match.index ?? 0) + match[0].length;
+  }
+  if (lastClose >= 0) out = out.slice(lastClose);
+
+  // An unterminated block means the answer never arrived — usually the reply
+  // hit the token ceiling mid-thought. Keep nothing rather than parsing the
+  // deliberation as if it were the result.
+  const dangling = out.search(/<(?:think|thinking|reasoning)>/i);
+  if (dangling >= 0) out = out.slice(0, dangling);
+
+  return out.trim();
+}
+
+/**
+ * Yield every balanced `{...}` or `[...]` span in the text, outermost first.
+ *
+ * The previous approach — first `{` to last `}` — breaks on any reply with
+ * prose on either side of the JSON, because a brace in that prose moves the
+ * boundary. Tracking depth (and ignoring braces inside strings) finds the
+ * actual object regardless of what surrounds it.
+ */
+function* jsonCandidates(text: string): Generator<string> {
+  for (let i = 0; i < text.length; i++) {
+    const open = text[i];
+    if (open !== '{' && open !== '[') continue;
+
+    const close = open === '{' ? '}' : ']';
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let j = i; j < text.length; j++) {
+      const ch = text[j];
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\' && inString) {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = !inString;
+      } else if (!inString) {
+        if (ch === open) depth++;
+        else if (ch === close && --depth === 0) {
+          yield text.slice(i, j + 1);
+          break;
+        }
+      }
+    }
+  }
+}
+
+function tryParse(text: string): { ok: true; value: unknown } | { ok: false } {
+  if (!text) return { ok: false };
+  try {
+    return { ok: true, value: JSON.parse(text) };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * Parse JSON robustly, handling reasoning blocks, markdown fences and prose.
  */
 export function parseJsonSafe(content: string): unknown {
-  const trimmed = content.trim();
+  const text = stripReasoning(content);
 
-  // Strip markdown fences.
-  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-  if (fenceMatch) {
-    return JSON.parse(fenceMatch[1] ?? '');
+  // The whole reply is JSON — the common case.
+  const direct = tryParse(text);
+  if (direct.ok) return direct.value;
+
+  // A fenced block anywhere in the reply. Not anchored to the ends, because
+  // models like to introduce the block ("Here is the blueprint:") and to add a
+  // closing remark after it.
+  for (const match of text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
+    const fenced = tryParse((match[1] ?? '').trim());
+    if (fenced.ok) return fenced.value;
   }
 
-  // Try direct parse.
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    // Try to find JSON object boundaries.
-    const start = trimmed.indexOf('{');
-    const end = trimmed.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      return JSON.parse(trimmed.slice(start, end + 1));
-    }
-    const arrStart = trimmed.indexOf('[');
-    const arrEnd = trimmed.lastIndexOf(']');
-    if (arrStart >= 0 && arrEnd > arrStart) {
-      return JSON.parse(trimmed.slice(arrStart, arrEnd + 1));
-    }
-    throw new Error('No valid JSON found in response');
+  // Otherwise take the first balanced span that actually parses.
+  for (const candidate of jsonCandidates(text)) {
+    const parsed = tryParse(candidate);
+    if (parsed.ok) return parsed.value;
   }
+
+  // Say what came back. Without this the caller only learns that some JSON
+  // somewhere was malformed, which is what made this class of failure so
+  // expensive to diagnose.
+  const preview = content.trim().slice(0, 200).replace(/\s+/g, ' ');
+  throw new Error(`No valid JSON found in response. Model replied: ${preview || '(empty)'}`);
 }
 
 /**
