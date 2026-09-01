@@ -77,21 +77,24 @@ export async function generateStructured<T extends z.ZodTypeAny>(
   let schemaFailures = 0;
   let retries = 0;
   let lastError: string | null = null;
+  let lastOutput: string | null = null;
+  let lastFailure: 'parse' | 'schema' | 'request' | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const messages = [...request.messages];
-      if (lastError && attempt > 0) {
-        // Feed the schema error back for repair.
-        messages.push({
-          role: 'assistant',
-          content: '[previous attempt failed]',
-        });
-        messages.push({
-          role: 'user',
-          content: `Your previous output was invalid JSON. Fix it to match the schema. Error: ${lastError}`,
-        });
+      if (lastOutput !== null && (lastFailure === 'parse' || lastFailure === 'schema')) {
+        // Show the model what it actually said. Repair is impossible otherwise:
+        // the error names a path like `sections.9.visual`, and without the
+        // output in front of it the model has no idea what is at that path.
+        messages.push({ role: 'assistant', content: lastOutput });
+        messages.push({ role: 'user', content: repairInstruction(lastFailure, lastError) });
       }
+
+      // Anything that goes wrong from here until the reply lands is a request
+      // failure with no output to repair, so clear the previous attempt's.
+      lastOutput = null;
+      lastFailure = 'request';
 
       const completion = await provider.complete({
         messages,
@@ -102,11 +105,15 @@ export async function generateStructured<T extends z.ZodTypeAny>(
         jsonSchema: zodToJsonSchema(request.schema),
       });
 
-      // Parse JSON (strip markdown fences if present).
+      lastOutput = completion.content;
+      lastFailure = 'parse';
+
+      // Parse JSON (strip reasoning, fences and surrounding prose).
       const parsed = parseJsonSafe(completion.content);
 
       // Validate against the Zod schema.
-      const result = request.schema.safeParse(parsed);
+      lastFailure = 'schema';
+      const result = request.schema.safeParse(dropNulls(parsed));
       if (result.success) {
         return {
           value: result.data,
@@ -128,7 +135,8 @@ export async function generateStructured<T extends z.ZodTypeAny>(
       });
       retries = attempt;
     } catch (err) {
-      // Network/provider error — retry.
+      // Parse or network/provider error — retry. `lastFailure` already says
+      // which, and carries the output to repair when there is one.
       retries = attempt;
       lastError = (err as Error).message;
       logger.warn('Structured generation request failed', {
@@ -143,6 +151,50 @@ export async function generateStructured<T extends z.ZodTypeAny>(
   }
 
   throw new Error(`Structured generation failed after ${maxRetries + 1} attempts: ${lastError}`);
+}
+
+/**
+ * Tell the model what went wrong and what a corrected reply looks like.
+ *
+ * The old message claimed every failure was invalid JSON. A schema failure is
+ * usually the opposite — well-formed JSON in the wrong shape — and being told
+ * it wrote broken JSON when it did not sends the model looking in the wrong
+ * place. Attempt 3 of a failing run would come back as a bare array of the one
+ * field the error mentioned.
+ */
+function repairInstruction(kind: 'parse' | 'schema', error: string | null): string {
+  return [
+    kind === 'parse'
+      ? 'That reply was not valid JSON.'
+      : 'That reply was valid JSON, but the wrong shape.',
+    `What failed: ${error ?? 'unknown'}`,
+    '',
+    'Send the corrected result and nothing else:',
+    '- one JSON object, not an array and not a fragment of the previous reply;',
+    '- omit optional fields entirely rather than setting them to null;',
+    '- no commentary, no code fences.',
+  ].join('\n');
+}
+
+/**
+ * Drop `null` properties before validation.
+ *
+ * The prompts mark optional fields with `?`, and models honour that by writing
+ * `"visual": null` as often as by leaving the key out. No schema in this
+ * codebase accepts null, so an explicit null is always the model spelling
+ * "absent" the other way, and rejecting it fails a lesson over nothing.
+ */
+export function dropNulls(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(dropNulls);
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      if (item === null) continue;
+      out[key] = dropNulls(item);
+    }
+    return out;
+  }
+  return value;
 }
 
 /**

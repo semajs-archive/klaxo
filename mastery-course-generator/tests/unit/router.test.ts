@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parseJsonSafe, stripReasoning } from '@/ai/router';
+import { z } from 'zod';
+import { dropNulls, generateStructured, parseJsonSafe, stripReasoning } from '@/ai/router';
+import type { AIProvider, CompletionRequest } from '@/ai/provider';
+import { LessonContentSchema, PracticeSetSchema } from '@/ai/types';
 
 describe('stripReasoning', () => {
   it('leaves a plain reply alone', () => {
@@ -88,5 +91,135 @@ describe('parseJsonSafe', () => {
 
   it('reports an empty reply as empty', () => {
     expect(() => parseJsonSafe('   ')).toThrow(/\(empty\)/);
+  });
+});
+
+describe('dropNulls', () => {
+  it('removes null properties', () => {
+    expect(dropNulls({ a: 1, b: null })).toEqual({ a: 1 });
+  });
+
+  it('recurses through nested objects and arrays', () => {
+    expect(dropNulls({ s: [{ visual: null, title: 'x' }] })).toEqual({
+      s: [{ title: 'x' }],
+    });
+  });
+
+  it('leaves array elements in place, including null ones', () => {
+    expect(dropNulls({ a: [1, null, 2] })).toEqual({ a: [1, null, 2] });
+  });
+
+  it('leaves values that are not null alone', () => {
+    expect(dropNulls({ a: 0, b: '', c: false })).toEqual({ a: 0, b: '', c: false });
+  });
+
+  it('lets a lesson with null visuals validate', () => {
+    // The shape that failed course generation: the model writes `null` for the
+    // optional fields instead of leaving them out.
+    const reply = {
+      objectives: ['Do the thing'],
+      sections: [
+        { type: 'explanation', title: 'A', content: 'body', visual: null },
+        {
+          type: 'visual',
+          title: 'B',
+          content: 'body',
+          visual: {
+            type: 'diagram',
+            purpose: 'show',
+            subject: 'x',
+            labels: [],
+            caption: 'c',
+            objectiveId: null,
+          },
+        },
+      ],
+      misconceptions: [],
+      visuals: [],
+      summary: 'done',
+    };
+
+    expect(LessonContentSchema.safeParse(reply).success).toBe(false);
+    const repaired = LessonContentSchema.safeParse(dropNulls(reply));
+    expect(repaired.success).toBe(true);
+    expect(repaired.success && repaired.data.sections[0]?.visual).toBeUndefined();
+  });
+
+  it('lets a practice set with a null objectiveId validate', () => {
+    const reply = { title: 'Set', level: 'guided', objectiveId: null, questions: [] };
+    expect(PracticeSetSchema.safeParse(reply).success).toBe(false);
+    expect(PracticeSetSchema.safeParse(dropNulls(reply)).success).toBe(true);
+  });
+});
+
+describe('generateStructured repair loop', () => {
+  const schema = z.object({ title: z.string() });
+
+  /** Records what each attempt was asked, and replies from a fixed script. */
+  function scriptedProvider(replies: string[]) {
+    const seen: CompletionRequest[] = [];
+    const provider = {
+      complete: async (request: CompletionRequest) => {
+        seen.push(request);
+        return {
+          content: replies[seen.length - 1] ?? '',
+          model: request.model,
+          provider: 'scripted',
+          latencyMs: 1,
+        };
+      },
+    } as unknown as AIProvider;
+    return { provider, seen };
+  }
+
+  it('shows the model its own previous output when repairing', async () => {
+    const bad = '{"titel":"typo"}';
+    const { provider, seen } = scriptedProvider([bad, '{"title":"Course"}']);
+
+    const result = await generateStructured(provider, 'm', { messages: [], schema });
+
+    expect(result.value).toEqual({ title: 'Course' });
+    expect(result.schemaFailures).toBe(1);
+
+    const repair = seen[1]?.messages ?? [];
+    expect(repair.at(-2)).toEqual({ role: 'assistant', content: bad });
+    expect(repair.at(-1)?.content).toContain('valid JSON, but the wrong shape');
+    expect(repair.at(-1)?.content).toContain('title');
+  });
+
+  it('names a parse failure as a parse failure', async () => {
+    const { provider, seen } = scriptedProvider(['not json at all', '{"title":"Course"}']);
+
+    await generateStructured(provider, 'm', { messages: [], schema });
+
+    expect(seen[1]?.messages.at(-1)?.content).toContain('was not valid JSON');
+  });
+
+  it('does not offer stale output to repair after a request failure', async () => {
+    const seen: CompletionRequest[] = [];
+    const provider = {
+      complete: async (request: CompletionRequest) => {
+        seen.push(request);
+        if (seen.length === 1) return { content: '{"titel":"typo"}', model: 'm', provider: 's' };
+        if (seen.length === 2) throw new Error('connection reset');
+        return { content: '{"title":"Course"}', model: 'm', provider: 's' };
+      },
+    } as unknown as AIProvider;
+
+    const result = await generateStructured(provider, 'm', { messages: [], schema });
+
+    expect(result.value).toEqual({ title: 'Course' });
+    // Attempt 2 repairs the schema failure; attempt 3 follows a dropped
+    // connection, so there is nothing to repair and the prompt is the original.
+    expect(seen[1]?.messages).toHaveLength(2);
+    expect(seen[2]?.messages).toHaveLength(0);
+  });
+
+  it('gives up with the last error after the retries are spent', async () => {
+    const { provider } = scriptedProvider(['[]', '[]', '[]']);
+
+    await expect(generateStructured(provider, 'm', { messages: [], schema })).rejects.toThrow(
+      /failed after 3 attempts/,
+    );
   });
 });
