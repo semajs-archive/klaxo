@@ -282,12 +282,30 @@ export class NvidiaNimProvider implements AIProvider {
     }
   }
 
+  /**
+   * Health is "can this thing answer a question", not "does it publish a model
+   * catalogue". `GET /models` is optional in the OpenAI-style protocol — the
+   * Cloudflare endpoint answers 405 — so asking for the catalogue reported a
+   * perfectly working provider as down.
+   *
+   * A one-token completion costs almost nothing and tests what actually
+   * matters, including whether the configured model exists.
+   */
   async healthCheck(): Promise<boolean> {
     try {
       await this.limiter.acquire();
       try {
-        const res = await fetch(`${this.config.baseUrl}/models`, {
-          headers: { Authorization: `Bearer ${this.config.apiKey}` },
+        const res = await fetch(`${this.config.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.config.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: this.config.defaultModel,
+            messages: [{ role: 'user', content: 'ping' }],
+            max_tokens: 1,
+          }),
         });
         return res.ok;
       } finally {

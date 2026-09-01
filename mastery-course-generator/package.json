@@ -21,7 +21,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e",
     "verify": "npm run typecheck && npm run test && npm run build",
-    "nim:probe": "tsx scripts/nim-probe.ts",
+    "nim:probe": "node --env-file-if-exists=.env --import tsx scripts/nim-probe.ts",
     "ai:setup": "node scripts/ai-setup.mjs"
   },
   "dependencies": {
