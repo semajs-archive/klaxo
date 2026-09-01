@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "AI-powered curriculum engineering platform: turns raw educational material into structured, grounded, mastery-oriented courses using FCC Server NVIDIA NIM models.",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
@@ -18,7 +21,8 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e",
     "verify": "npm run typecheck && npm run test && npm run build",
-    "nim:probe": "tsx scripts/nim-probe.ts"
+    "nim:probe": "node --env-file-if-exists=.env --import tsx scripts/nim-probe.ts",
+    "ai:setup": "node scripts/ai-setup.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

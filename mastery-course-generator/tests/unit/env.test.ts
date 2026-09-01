@@ -17,12 +17,22 @@ describe('env', () => {
   });
 
   it('returns defaults when env is unset', () => {
-    const env = getEnv();
-    expect(env.AI_DEV_MODE).toBe(false);
-    expect(env.FCC_SERVER_API_KEY).toBeUndefined();
-    expect(env.NODE_ENV).toBe('development');
-    expect(env.AI_MAX_RETRIES).toBe(3);
-    expect(env.AI_TEMPERATURE).toBe(0.3);
+    // Vitest sets NODE_ENV=test; clear it so the schema default is exercised.
+    // (@types/node marks NODE_ENV read-only, hence the cast.)
+    const envRecord = process.env as Record<string, string | undefined>;
+    const priorNodeEnv = envRecord.NODE_ENV;
+    delete envRecord.NODE_ENV;
+    try {
+      const env = getEnv();
+      expect(env.AI_DEV_MODE).toBe(false);
+      expect(env.FCC_SERVER_API_KEY).toBeUndefined();
+      expect(env.NODE_ENV).toBe('development');
+      expect(env.AI_MAX_RETRIES).toBe(3);
+      expect(env.AI_TEMPERATURE).toBe(0.3);
+    } finally {
+      envRecord.NODE_ENV = priorNodeEnv;
+      resetEnvCache();
+    }
   });
 
   it('coerces AI_DEV_MODE truthy string to true', () => {

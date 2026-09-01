@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.*
+!.env.example
+data
+uploads
+.tmp-test-uploads
+.claude
+.github
+*.log

@@ -51,7 +51,7 @@ export default function LessonReader({ lesson, objectiveStatements }: LessonRead
   return (
     <article className="space-y-5">
       {lesson.summary && (
-        <p className="rounded-md bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">
+        <p className="rounded-md bg-muted/60 p-3 font-serif text-[15px] leading-7 text-foreground-soft">
           {lesson.summary}
         </p>
       )}
@@ -86,7 +86,12 @@ export default function LessonReader({ lesson, objectiveStatements }: LessonRead
                 )}
               </div>
 
-              {section.content && <MarkdownViewer content={section.content} />}
+              {section.content && (
+                <MarkdownViewer
+                  content={section.content}
+                  className="font-serif text-[15px] leading-7"
+                />
+              )}
 
               {section.visual && (
                 <div className="mt-3 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
@@ -108,7 +113,7 @@ export default function LessonReader({ lesson, objectiveStatements }: LessonRead
           ))}
         </div>
       ) : (
-        <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+        <div className="rounded-md border border-dashed p-6 text-center font-serif text-[15px] text-muted-foreground">
           This lesson has no rendered content yet.
         </div>
       )}
@@ -151,7 +156,7 @@ export default function LessonReader({ lesson, objectiveStatements }: LessonRead
           <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Summary
           </h4>
-          <MarkdownViewer content={content.summary} />
+          <MarkdownViewer content={content.summary} className="font-serif text-[15px] leading-7" />
         </div>
       )}
     </article>

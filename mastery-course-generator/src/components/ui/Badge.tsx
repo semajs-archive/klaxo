@@ -21,16 +21,16 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const variantStyles: Record<BadgeVariant, string> = {
   default:
-    'bg-primary text-primary-foreground hover:bg-primary/90',
+    'border-transparent bg-primary text-primary-foreground hover:bg-primary/90',
   secondary:
-    'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    'border-border bg-secondary text-secondary-foreground hover:bg-muted',
   success:
     'bg-success-subtle text-success-subtle-foreground border border-success/20',
   warning:
     'bg-warning-subtle text-warning-subtle-foreground border border-warning/20',
   error:
     'bg-error-subtle text-error-subtle-foreground border border-error/20',
-  info: 'bg-info-subtle text-info-subtle-foreground border border-info/20',
+  info: 'bg-info-subtle text-info-subtle-foreground border border-primary-border',
   outline:
     'border border-border bg-transparent text-foreground',
 };
@@ -52,7 +52,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
         ref={ref}
         role="status"
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors',
+          'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[0.1em] whitespace-nowrap transition-colors',
           variantStyles[variant],
           className,
         )}

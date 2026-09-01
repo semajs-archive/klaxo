@@ -40,9 +40,31 @@ export function getDb(): Database {
   for (const stmt of schemaDdl()) {
     sqlite.exec(stmt);
   }
+  applyColumnMigrations(sqlite);
 
   db = drizzle(sqlite, { schema });
   return db;
+}
+
+/**
+ * CREATE TABLE IF NOT EXISTS covers new tables but not new columns on
+ * existing tables; add those here so older database files upgrade in place.
+ */
+function applyColumnMigrations(conn: Database.Database): void {
+  const additions: Record<string, { column: string; ddl: string }[]> = {
+    users: [
+      { column: 'password_hash', ddl: 'ALTER TABLE users ADD COLUMN password_hash text' },
+      { column: 'role', ddl: "ALTER TABLE users ADD COLUMN role text NOT NULL DEFAULT 'teacher'" },
+    ],
+  };
+  for (const [table, cols] of Object.entries(additions)) {
+    const existing = new Set(
+      (conn.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name),
+    );
+    for (const { column, ddl } of cols) {
+      if (!existing.has(column)) conn.exec(ddl);
+    }
+  }
 }
 
 export function resetDb(): void {

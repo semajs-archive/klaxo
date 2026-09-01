@@ -130,7 +130,10 @@ export function getEnv(): Env {
 
   const env = parsed.data;
 
-  if (env.NODE_ENV === 'production') {
+  // `next build` evaluates route modules with NODE_ENV=production but without
+  // runtime secrets; enforce the production guards only at actual runtime.
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+  if (env.NODE_ENV === 'production' && !isBuildPhase) {
     if (env.APP_SECRET === 'insecure-development-secret' || env.APP_SECRET.length < 32) {
       throw new Error('APP_SECRET must be a strong 32+ character secret in production.');
     }

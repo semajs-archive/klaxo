@@ -12,6 +12,7 @@ export interface PersistedSource {
   filename: string | null;
   byteSize: number;
   checksum: string;
+  preview?: string;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
@@ -34,6 +35,7 @@ interface ServerSource {
   byteSize: number | null;
   status: string;
   checksum?: string | null;
+  preview?: string;
 }
 
 interface FileUploadProps {
@@ -53,7 +55,26 @@ function mapServerSource(s: ServerSource): PersistedSource {
     filename: s.filename,
     byteSize: s.byteSize ?? 0,
     checksum: s.checksum ?? '',
+    preview: s.preview,
   };
+}
+
+/**
+ * Name a source the way its owner would.
+ *
+ * Typed notes have no filename, so the list used to show the raw database id.
+ * The first line of what was typed is what someone actually recognises.
+ */
+function sourceLabel(s: PersistedSource): string {
+  if (s.filename) return s.filename;
+  if (s.preview) return s.preview;
+  return 'Typed note';
+}
+
+/** Anything under a kilobyte rounded to "0 KB", which reads as empty. */
+function sourceSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} bytes`;
+  return `${Math.round(bytes / 1024)} KB`;
 }
 
 const DEFAULT_ACCEPTED = [
@@ -297,18 +318,18 @@ export function FileUpload({
       {serverSources.length > 0 && (
         <div className="rounded-lg border bg-muted/30 p-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Uploaded sources</h3>
+            <h3 className="text-sm font-medium">What you have added</h3>
             <Badge variant="outline">{serverSources.length} total</Badge>
           </div>
           <ul className="mt-3 space-y-2" role="list">
             {serverSources.map((s) => (
-              <li key={s.documentId} className="flex items-center justify-between gap-3 text-sm">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Badge variant="secondary">{s.kind}</Badge>
-                  <span className="truncate">{s.filename ?? `Source ${s.documentId}`}</span>
+              <li key={s.documentId} className="flex items-start justify-between gap-3 text-sm">
+                <div className="flex min-w-0 items-start gap-2">
+                  <Badge variant="secondary">{s.kind === 'prompt' ? 'typed' : s.kind}</Badge>
+                  <span className="truncate">{sourceLabel(s)}</span>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {Math.round(s.byteSize / 1024)} KB
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {sourceSize(s.byteSize)}
                 </span>
               </li>
             ))}
@@ -318,8 +339,8 @@ export function FileUpload({
 
       {/* Prompts */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">Course instructions</h3>
-        <p className="text-xs text-muted-foreground">Add natural-language guidance — they become first-class source inputs.</p>
+        <h3 className="text-sm font-medium">Or type it out</h3>
+        <p className="text-xs text-muted-foreground">You can also just type what the topic covers, in your own words.</p>
         {prompts.map((p, i) => (
           <div key={i} className="flex gap-2">
             <textarea
@@ -330,7 +351,7 @@ export function FileUpload({
                 setPrompts(next);
               }}
               placeholder={`Instruction ${i + 1} (e.g., "Design an introductory statistics course…")`}
-              className="flex-1 min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex-1 min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
               rows={2}
             />
             {prompts.length > 1 && (
@@ -351,16 +372,16 @@ export function FileUpload({
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">
           {loadingSources
-            ? 'Loading existing sources…'
+            ? 'Loading…'
             : serverSources.length > 0
-            ? `${serverSources.length} source(s) uploaded`
-            : 'No sources uploaded yet'}
+            ? `${serverSources.length} ${serverSources.length === 1 ? 'thing' : 'things'} added`
+            : 'Nothing added yet'}
         </p>
-        <Button onClick={uploadAll} loading={uploading} disabled={files.length === 0 && prompts.filter((p) => p.trim()).length === 0}>
-          Upload sources
+        <Button className="w-full sm:w-auto" onClick={uploadAll} loading={uploading} disabled={files.length === 0 && prompts.filter((p) => p.trim()).length === 0}>
+          Add this
         </Button>
       </div>
     </div>

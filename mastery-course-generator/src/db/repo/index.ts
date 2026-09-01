@@ -5,7 +5,7 @@
  * Drizzle directly. Ownership checks (`userId`) are applied at the call site;
  * these helpers provide typed, predictable CRUD.
  */
-import { eq, desc, asc, and, inArray, lt } from 'drizzle-orm';
+import { eq, desc, asc, and, or, inArray, lt } from 'drizzle-orm';
 import { getDb, schema } from '../index';
 
 const {
@@ -32,6 +32,8 @@ const {
   generationJobs,
   generationEvents,
   userEdits,
+  courseShares,
+  courseEnrollments,
 } = schema;
 
 
@@ -41,13 +43,21 @@ export function getUserByEmail(email: string) {
   return getDb().select().from(users).where(eq(users.email, email)).get();
 }
 
-export function createUser(input: { id: string; email: string; displayName?: string }) {
+export function createUser(input: {
+  id: string;
+  email: string;
+  displayName?: string;
+  passwordHash?: string;
+  role?: string;
+}) {
   return getDb()
     .insert(users)
     .values({
       id: input.id,
       email: input.email,
       displayName: input.displayName ?? null,
+      passwordHash: input.passwordHash ?? null,
+      role: input.role ?? 'teacher',
     })
     .returning()
     .get();
@@ -55,6 +65,79 @@ export function createUser(input: { id: string; email: string; displayName?: str
 
 export function getUserById(id: string) {
   return getDb().select().from(users).where(eq(users.id, id)).get();
+}
+
+export function updateUserAccount(
+  id: string,
+  data: Partial<{ email: string; displayName: string; passwordHash: string; role: string }>,
+) {
+  return getDb().update(users).set(data).where(eq(users.id, id)).returning().get();
+}
+
+/* ------------------------------------------------------------ sharing ---- */
+
+export function createCourseShare(input: { id: string; courseId: string; token: string }) {
+  return getDb()
+    .insert(courseShares)
+    .values({ id: input.id, courseId: input.courseId, token: input.token })
+    .returning()
+    .get();
+}
+
+export function getActiveShareForCourse(courseId: string) {
+  return getDb()
+    .select()
+    .from(courseShares)
+    .where(eq(courseShares.courseId, courseId))
+    .orderBy(desc(courseShares.createdAt))
+    .all()
+    .find((s) => s.revokedAt == null);
+}
+
+export function getShareByToken(token: string) {
+  return getDb().select().from(courseShares).where(eq(courseShares.token, token)).get();
+}
+
+export function revokeShare(id: string) {
+  return getDb()
+    .update(courseShares)
+    .set({ revokedAt: Date.now() })
+    .where(eq(courseShares.id, id))
+    .returning()
+    .get();
+}
+
+export function createEnrollment(input: {
+  id: string;
+  courseId: string;
+  userId: string;
+  shareId: string;
+}) {
+  return getDb().insert(courseEnrollments).values(input).returning().get();
+}
+
+export function getEnrollment(courseId: string, userId: string) {
+  return getDb()
+    .select()
+    .from(courseEnrollments)
+    .where(and(eq(courseEnrollments.courseId, courseId), eq(courseEnrollments.userId, userId)))
+    .get();
+}
+
+/** Learners enrolled in a course, with their display names. */
+export function listEnrollments(courseId: string) {
+  return getDb()
+    .select({
+      id: courseEnrollments.id,
+      userId: courseEnrollments.userId,
+      joinedAt: courseEnrollments.joinedAt,
+      displayName: users.displayName,
+    })
+    .from(courseEnrollments)
+    .innerJoin(users, eq(users.id, courseEnrollments.userId))
+    .where(eq(courseEnrollments.courseId, courseId))
+    .orderBy(asc(courseEnrollments.joinedAt))
+    .all();
 }
 
 /* ------------------------------------------------------------ courses ---- */
@@ -508,6 +591,10 @@ export function listTopics(courseId: string) {
     .all();
 }
 
+export function deleteTopic(id: string) {
+  return getDb().delete(topics).where(eq(topics.id, id)).run();
+}
+
 export function deleteTopicsByCourse(courseId: string) {
   return getDb().delete(topics).where(eq(topics.courseId, courseId)).run();
 }
@@ -581,6 +668,8 @@ export function deleteObjectivesByCourse(courseId: string) {
 }
 
 export function updateObjective(id: string, data: Partial<{
+  unitId: string | null;
+  topicId: string | null;
   ordinal: number;
   code: string;
   title: string;
@@ -599,6 +688,43 @@ export function updateObjective(id: string, data: Partial<{
     .where(eq(objectives.id, id))
     .returning()
     .get();
+}
+
+/**
+ * Targeted deletes, used when a replan drops an objective. The by-course
+ * variants above are for wholesale rebuilds; these remove one objective and
+ * everything hanging off it without touching the rest of the course.
+ */
+export function deleteObjective(id: string) {
+  return getDb().delete(objectives).where(eq(objectives.id, id)).run();
+}
+
+export function deleteQuestionsByObjective(objectiveId: string) {
+  return getDb().delete(questions).where(eq(questions.objectiveId, objectiveId)).run();
+}
+
+export function deletePracticeSetsByObjective(objectiveId: string) {
+  return getDb().delete(practiceSets).where(eq(practiceSets.objectiveId, objectiveId)).run();
+}
+
+export function deleteDependenciesForObjective(objectiveId: string) {
+  return getDb()
+    .delete(objectiveDependencies)
+    .where(
+      or(
+        eq(objectiveDependencies.objectiveId, objectiveId),
+        eq(objectiveDependencies.prerequisiteId, objectiveId),
+      ),
+    )
+    .run();
+}
+
+export function deleteLesson(id: string) {
+  return getDb().delete(lessons).where(eq(lessons.id, id)).run();
+}
+
+export function deleteMasteryByObjective(objectiveId: string) {
+  return getDb().delete(masteryRecords).where(eq(masteryRecords.objectiveId, objectiveId)).run();
 }
 
 /* ------------------------------------------------ objectiveDependencies ---- */
@@ -704,6 +830,8 @@ export function deleteLessonsByCourse(courseId: string) {
 }
 
 export function updateLesson(id: string, data: Partial<{
+  unitId: string;
+  topicId: string | null;
   ordinal: number;
   title: string;
   summary: string;
@@ -1123,6 +1251,26 @@ export function updateProvenance(id: string, data: Partial<{
     .where(eq(provenance.id, id))
     .returning()
     .get();
+}
+
+/**
+ * An assessment is written across a whole unit, so when the units are rebuilt
+ * it is detached rather than deleted — the questions in it are still good.
+ */
+export function detachAssessmentsFromUnits(courseId: string) {
+  return getDb()
+    .update(assessments)
+    .set({ unitId: null })
+    .where(eq(assessments.courseId, courseId))
+    .run();
+}
+
+/** Provenance for structure that is about to be deleted, e.g. old units. */
+export function deleteProvenanceForEntity(entityType: string, entityId: string) {
+  return getDb()
+    .delete(provenance)
+    .where(and(eq(provenance.entityType, entityType), eq(provenance.entityId, entityId)))
+    .run();
 }
 
 export function deleteProvenanceByCourse(courseId: string) {

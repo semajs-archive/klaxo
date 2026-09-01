@@ -10,9 +10,9 @@
  * property the authorization checks depend on.
  */
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
-import { cookies } from 'next/headers';
 import { getEnv } from './env';
 import { unauthorized } from './errors';
+import { getSoloUserId } from './solo';
 
 const COOKIE = 'mcg_session';
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -57,13 +57,18 @@ export function sessionCookieOptions() {
   };
 }
 
-/** Read the signed session from the incoming request, if any. */
+/**
+ * Who this request belongs to.
+ *
+ * This is a single-person app, so there is no sign-in and the answer is always
+ * the solo user. The signature is kept — and every route still authorises
+ * through it — so ownership checks stay exactly as they were and the app could
+ * be opened up again without touching the API.
+ */
 export async function readSession(): Promise<{ userId: string } | null> {
-  const store = await cookies();
-  return decodeSession(store.get(COOKIE)?.value);
+  return { userId: getSoloUserId() };
 }
 
-/** Read the session or throw 401. */
 export async function requireUserId(): Promise<string> {
   const session = await readSession();
   if (!session) throw unauthorized();

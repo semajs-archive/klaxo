@@ -1,39 +1,257 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+/*
+  KLAXO design system — "Mineral Rose"
+
+  Ground and ink are cool and mineral: a pale blue-grey paper, an indigo
+  charcoal for type. There is exactly ONE accent, a deep rose, and it is spent
+  the same way everywhere — the primary control, the kicker above a heading,
+  the word a headline turns on. Nothing else is coloured.
+
+  Type is a pair, not a set. Schibsted Grotesk carries every structural thing:
+  headings, UI, buttons, labels. Newsreader carries running prose — lesson
+  text, page ledes, the sentence under an empty state — so explanation reads
+  differently from instruction. No monospace display type; mono survives only
+  where the content really is code or a token.
+
+  Surfaces are separated by hairlines and a whisper of elevation, never by a
+  drawn outline and an offset shadow. Radii are 12px, 8px for small things.
+
+  Font families arrive as CSS variables from next/font in layout.tsx.
+*/
+
+@theme inline {
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, Cambria, "Times New Roman", serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --color-primary-50: oklch(0.97 0.014 273); --color-primary-100: oklch(0.94 0.03 273); --color-primary-200: oklch(0.88 0.06 273); --color-primary-300: oklch(0.79 0.11 273); --color-primary-400: oklch(0.69 0.16 273); --color-primary-500: oklch(0.59 0.22 273); --color-primary-600: oklch(0.52 0.24 273); --color-primary-700: oklch(0.45 0.23 273); --color-primary-800: oklch(0.38 0.19 273); --color-primary-900: oklch(0.31 0.15 273); --color-primary-950: oklch(0.23 0.11 273);
-  --color-accent-50: oklch(0.97 0.02 165); --color-accent-100: oklch(0.93 0.04 165); --color-accent-200: oklch(0.86 0.08 165); --color-accent-300: oklch(0.78 0.12 165); --color-accent-400: oklch(0.69 0.15 165); --color-accent-500: oklch(0.61 0.17 165); --color-accent-600: oklch(0.53 0.15 165); --color-accent-700: oklch(0.45 0.12 165); --color-accent-800: oklch(0.37 0.09 165); --color-accent-900: oklch(0.3 0.07 165); --color-accent-950: oklch(0.22 0.05 165);
-  --color-background: var(--color-neutral-50); --color-foreground: var(--color-neutral-900); --color-card: var(--color-white); --color-card-foreground: var(--color-neutral-900); --color-popover: var(--color-white); --color-popover-foreground: var(--color-neutral-900); --color-primary: var(--color-primary-600); --color-primary-foreground: var(--color-white); --color-secondary: var(--color-neutral-100); --color-secondary-foreground: var(--color-neutral-900); --color-muted: var(--color-neutral-100); --color-muted-foreground: var(--color-neutral-500); --color-accent-foreground: var(--color-accent-950); --color-destructive: var(--color-red-600); --color-destructive-foreground: var(--color-white); --color-border: var(--color-neutral-200); --color-input: var(--color-neutral-300); --color-ring: var(--color-primary-500);
-  --color-success: var(--color-emerald-600); --color-success-foreground: var(--color-white); --color-success-subtle: var(--color-emerald-50); --color-success-subtle-foreground: var(--color-emerald-800); --color-warning: var(--color-amber-500); --color-warning-foreground: var(--color-amber-950); --color-warning-subtle: var(--color-amber-50); --color-warning-subtle-foreground: var(--color-amber-800); --color-error: var(--color-red-600); --color-error-foreground: var(--color-white); --color-error-subtle: var(--color-red-50); --color-error-subtle-foreground: var(--color-red-800); --color-info: var(--color-blue-600); --color-info-foreground: var(--color-white); --color-info-subtle: var(--color-blue-50); --color-info-subtle-foreground: var(--color-blue-800);
-  --color-neutral-0: oklch(1 0 0); --color-neutral-50: oklch(0.985 0.002 250); --color-neutral-100: oklch(0.95 0.004 250); --color-neutral-200: oklch(0.9 0.006 250); --color-neutral-300: oklch(0.83 0.009 250); --color-neutral-400: oklch(0.71 0.011 250); --color-neutral-500: oklch(0.58 0.013 250); --color-neutral-600: oklch(0.46 0.015 250); --color-neutral-700: oklch(0.37 0.014 250); --color-neutral-800: oklch(0.28 0.013 250); --color-neutral-900: oklch(0.21 0.011 250); --color-neutral-950: oklch(0.14 0.01 250); --color-white: oklch(1 0 0); --color-black: oklch(0 0 0);
-  --color-emerald-50: oklch(0.979 0.02 152); --color-emerald-500: oklch(0.68 0.16 152); --color-emerald-600: oklch(0.6 0.15 152); --color-emerald-800: oklch(0.43 0.11 152); --color-amber-50: oklch(0.987 0.02 85); --color-amber-400: oklch(0.79 0.17 85); --color-amber-500: oklch(0.73 0.18 85); --color-amber-800: oklch(0.46 0.12 85); --color-amber-950: oklch(0.28 0.07 85); --color-red-50: oklch(0.971 0.013 17); --color-red-500: oklch(0.637 0.237 17); --color-red-600: oklch(0.577 0.245 17); --color-red-800: oklch(0.444 0.177 17); --color-blue-50: oklch(0.97 0.014 254); --color-blue-400: oklch(0.707 0.165 254); --color-blue-600: oklch(0.546 0.245 254); --color-blue-800: oklch(0.424 0.199 254);
-  --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-2xl: 1.5rem; --radius-3xl: 2rem;
-  --shadow-sm: 0 1px 3px 0 oklch(0.14 0.01 250 / 0.1), 0 1px 2px -1px oklch(0.14 0.01 250 / 0.1); --shadow-md: 0 4px 6px -1px oklch(0.14 0.01 250 / 0.1), 0 2px 4px -2px oklch(0.14 0.01 250 / 0.1); --shadow-lg: 0 10px 15px -3px oklch(0.14 0.01 250 / 0.1), 0 4px 6px -4px oklch(0.14 0.01 250 / 0.1); --shadow-xl: 0 20px 25px -5px oklch(0.14 0.01 250 / 0.1), 0 8px 10px -6px oklch(0.14 0.01 250 / 0.1); --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.dark { --color-background: var(--color-neutral-950); --color-foreground: var(--color-neutral-50); --color-card: var(--color-neutral-900); --color-card-foreground: var(--color-neutral-50); --color-popover: var(--color-neutral-900); --color-popover-foreground: var(--color-neutral-50); --color-primary: var(--color-primary-400); --color-primary-foreground: var(--color-primary-950); --color-secondary: var(--color-neutral-800); --color-secondary-foreground: var(--color-neutral-50); --color-muted: var(--color-neutral-800); --color-muted-foreground: var(--color-neutral-400); --color-border: var(--color-neutral-800); --color-input: var(--color-neutral-700); --color-ring: var(--color-primary-400); --color-success: var(--color-emerald-500); --color-warning: var(--color-amber-400); --color-error: var(--color-red-500); --color-info: var(--color-blue-400); }
+@theme {
+  /* ---- Mineral neutrals: pale blue-grey paper up to indigo charcoal ---- */
+  --color-neutral-0: #FFFFFF;
+  --color-neutral-50: #FAFAFC;
+  --color-neutral-100: #F2F3F8;
+  --color-neutral-200: #E6E8EF;
+  --color-neutral-300: #DBDEE9;
+  --color-neutral-400: #BFC4D4;
+  --color-neutral-500: #9AA0B4;
+  --color-neutral-600: #6E7488;
+  --color-neutral-700: #4C5268;
+  --color-neutral-800: #343A4D;
+  --color-neutral-900: #232838;
+  --color-neutral-950: #191C2B;
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+
+  /* ---- Rose: the only accent ---- */
+  --color-rose-50: #FBF3F6;
+  --color-rose-100: #F0DFE5;
+  --color-rose-200: #E4C3CF;
+  --color-rose-300: #D49EB2;
+  --color-rose-400: #C4708D;
+  --color-rose-500: #A9375C;
+  --color-rose-600: #983052;
+  --color-rose-700: #7E2544;
+  --color-rose-800: #641C35;
+  --color-rose-900: #4B1527;
+
+  /* Primary is the rose. The scale is kept so `hover:bg-primary-500` etc.
+     resolve, but every step is the same hue — no second accent hides here. */
+  --color-primary-50: #FBF3F6;
+  --color-primary-100: #F0DFE5;
+  --color-primary-200: #E4C3CF;
+  --color-primary-300: #D49EB2;
+  --color-primary-400: #BC4268;
+  --color-primary-500: #BC4268;
+  --color-primary-600: #A9375C;
+  --color-primary-700: #7E2544;
+  --color-primary-800: #641C35;
+  --color-primary-900: #4B1527;
+  --color-primary-950: #380F1D;
+
+  /* ---- Semantic surfaces ---- */
+  --color-background: #E6E8EF;          /* page ground */
+  --color-foreground: #191C2B;          /* ink */
+  --color-foreground-soft: #4C5268;     /* secondary text, running prose */
+  --color-card: #FAFAFC;                /* raised card */
+  --color-card-foreground: #191C2B;
+  --color-popover: #FAFAFC;
+  --color-popover-foreground: #191C2B;
+  --color-secondary: #F2F3F8;           /* secondary surface, hovers */
+  --color-secondary-foreground: #191C2B;
+  --color-muted: #DBDEE9;               /* recessed band, tracks, skeletons */
+  --color-muted-foreground: #6E7488;
+  --color-accent: #F2F3F8;
+  --color-accent-foreground: #191C2B;
+
+  --color-primary: #A9375C;
+  --color-primary-foreground: #FAFAFC;
+  --color-primary-soft: #F0DFE5;
+  --color-primary-soft-hover: #E4C3CF;
+  --color-primary-soft-foreground: #7E2544;
+  --color-primary-border: rgba(169, 55, 92, 0.28);
+
+  --color-border: rgba(25, 28, 43, 0.15);
+  --color-hairline: rgba(25, 28, 43, 0.08);
+  --color-input: rgba(25, 28, 43, 0.22);
+  --color-ring: #A9375C;
+  --color-grid-line: rgba(25, 28, 43, 0.15);
+  --color-kicker: #A9375C;
+
+  --color-destructive: #B3261E;
+  --color-destructive-foreground: #FFFFFF;
+
+  /* ---- Status: functional only, tuned to the mineral ground ---- */
+  --color-success: #1F7A5A;
+  --color-success-foreground: #FFFFFF;
+  --color-success-subtle: #DCEFE6;
+  --color-success-subtle-foreground: #17553F;
+  --color-warning: #8A6320;
+  --color-warning-foreground: #FFFFFF;
+  --color-warning-subtle: #F1E7D5;
+  --color-warning-subtle-foreground: #6B4C15;
+  --color-error: #B3261E;
+  --color-error-foreground: #FFFFFF;
+  --color-error-subtle: #F7DEDC;
+  --color-error-subtle-foreground: #7F1D18;
+  /* "Info" is the accent — the one colour this system owns. */
+  --color-info: #A9375C;
+  --color-info-foreground: #FAFAFC;
+  --color-info-subtle: #F0DFE5;
+  --color-info-subtle-foreground: #7E2544;
+
+  /* ---- Radii: 12px standard, 8px small ---- */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 1rem;
+
+  /* ---- Elevation: soft and low. Nothing is stamped onto the page. ---- */
+  --shadow-sm: 0 1px 2px 0 rgba(25, 28, 43, 0.05);
+  --shadow-md: 0 1px 2px 0 rgba(25, 28, 43, 0.04), 0 4px 10px -3px rgba(25, 28, 43, 0.08);
+  --shadow-lg: 0 2px 4px -1px rgba(25, 28, 43, 0.04), 0 12px 24px -8px rgba(25, 28, 43, 0.1);
+  --shadow-xl: 0 4px 8px -2px rgba(25, 28, 43, 0.05), 0 24px 44px -16px rgba(25, 28, 43, 0.14);
+
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+  Dark mode — derived from Mineral Rose, not inverted from it. Follows the
+  device setting; no toggle.
+
+  The ground drops into the same indigo-charcoal family the ink comes from, so
+  night is the daylight palette seen from the other end rather than a second
+  design. Surfaces still step up in one family; borders stay a visible slate
+  line instead of going white.
+
+  The rose has to be lifted to survive a dark ground: #A9375C reads as almost
+  black against #12141E, so night uses #D96A8B. That is light enough that the
+  label on a rose button flips to the dark ink — the contrast requirement
+  wins over symmetry.
+*/
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #12141E;
+    --color-foreground: #E9EBF2;
+    --color-foreground-soft: #B4BACB;
+    --color-card: #1B1F2C;
+    --color-card-foreground: #E9EBF2;
+    --color-popover: #232838;
+    --color-popover-foreground: #E9EBF2;
+    --color-secondary: #232838;
+    --color-secondary-foreground: #E9EBF2;
+    --color-muted: #232838;
+    --color-muted-foreground: #939AAF;
+    --color-accent: #232838;
+    --color-accent-foreground: #E9EBF2;
+
+    --color-primary: #D96A8B;
+    --color-primary-foreground: #12141E;
+    --color-primary-400: #E88BA6;
+    --color-primary-500: #E88BA6;
+    --color-primary-600: #D96A8B;
+    --color-primary-700: #C4576F;
+    --color-primary-soft: #33202A;
+    --color-primary-soft-hover: #402734;
+    --color-primary-soft-foreground: #F0C2D0;
+    --color-primary-border: rgba(217, 106, 139, 0.35);
+
+    --color-border: #2E3446;
+    --color-hairline: rgba(233, 235, 242, 0.09);
+    --color-input: #3A4157;
+    --color-ring: #D96A8B;
+    --color-grid-line: #2E3446;
+    --color-kicker: #D96A8B;
+
+    --color-destructive: #C4423A;
+    --color-destructive-foreground: #FFFFFF;
+
+    --color-success: #6FCFA6;
+    --color-success-foreground: #10231C;
+    --color-success-subtle: #17362C;
+    --color-success-subtle-foreground: #A9E5CC;
+    --color-warning: #E0B872;
+    --color-warning-foreground: #241B0C;
+    --color-warning-subtle: #33291A;
+    --color-warning-subtle-foreground: #EEDCB6;
+    --color-error: #F0918A;
+    --color-error-foreground: #2A100D;
+    --color-error-subtle: #3A1F1D;
+    --color-error-subtle-foreground: #F6C6C1;
+    --color-info: #D96A8B;
+    --color-info-foreground: #12141E;
+    --color-info-subtle: #33202A;
+    --color-info-subtle-foreground: #F0C2D0;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 1px 2px 0 rgba(0, 0, 0, 0.35), 0 4px 12px -3px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 2px 4px -1px rgba(0, 0, 0, 0.35), 0 14px 28px -8px rgba(0, 0, 0, 0.55);
+    --shadow-xl: 0 4px 8px -2px rgba(0, 0, 0, 0.4), 0 26px 48px -16px rgba(0, 0, 0, 0.6);
+  }
+}
 
 @layer base {
   * { border-color: var(--color-border); }
-  html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; }
-  body { background-color: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-feature-settings: "cv02", "cv03", "cv04", "cv11"; }
-  ::selection { background-color: var(--color-primary-200); color: var(--color-primary-950); }
-  .dark ::selection { background-color: var(--color-primary-700); color: var(--color-primary-50); }
+  /* Tells the browser to theme its own furniture — form controls, scrollbars,
+     the flash of background before paint — from the same device setting. */
+  html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; color-scheme: light dark; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; }
+  /* Large headings pull tighter than small ones. */
+  h1 { letter-spacing: -0.03em; }
+  h2 { letter-spacing: -0.028em; }
+  ::selection { background-color: var(--color-primary-soft); color: var(--color-primary-soft-foreground); }
   :focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
-  * { scrollbar-width: thin; scrollbar-color: var(--color-neutral-300) transparent; }
-  *::-webkit-scrollbar { width: 8px; height: 8px; } *::-webkit-scrollbar-track { background: transparent; } *::-webkit-scrollbar-thumb { background-color: var(--color-neutral-300); border-radius: 9999px; }
-  .dark * { scrollbar-color: var(--color-neutral-700) transparent; } .dark *::-webkit-scrollbar-thumb { background-color: var(--color-neutral-700); }
+  * { scrollbar-width: thin; scrollbar-color: var(--color-neutral-400) transparent; }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background-color: var(--color-neutral-400); border-radius: 9999px; }
+  @media (prefers-color-scheme: dark) {
+    * { scrollbar-color: #3A4157 transparent; }
+    *::-webkit-scrollbar-thumb { background-color: #3A4157; }
+  }
 }
 
 @layer components {
-  .bg-grid { background-image: linear-gradient(to right, color-mix(in oklch, var(--color-border) 38%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklch, var(--color-border) 38%, transparent) 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, black, transparent 72%); opacity: 0.35; }
-  .card-surface { background-color: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
-  .badge { display: inline-flex; align-items: center; gap: 0.375rem; border-radius: 9999px; padding: 0.25rem 0.625rem; font-size: 0.75rem; line-height: 1rem; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
+  .bg-grid { background-image: linear-gradient(to right, color-mix(in srgb, var(--color-grid-line) 45%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--color-grid-line) 45%, transparent) 1px, transparent 1px); background-size: 48px 48px; mask-image: linear-gradient(to bottom, black, transparent 72%); opacity: 0.35; }
+  .card-surface { background-color: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+  .badge { display: inline-flex; align-items: center; gap: 0.375rem; border-radius: var(--radius-sm); padding: 0.25rem 0.625rem; font-family: var(--font-sans); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
   .status-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background-color: currentColor; }
+  .kicker { font-family: var(--font-sans); font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: var(--color-kicker); }
+  /* The headline's turn word. In Mineral Rose it is stated in the accent
+     rather than swiped with a highlighter. */
+  .marker-hl { color: var(--color-primary); }
+  /* Running prose: the explanatory register, set in Newsreader. */
+  .prose-serif { font-family: var(--font-serif); font-size: 1.0625rem; line-height: 1.7; letter-spacing: 0; color: var(--color-foreground-soft); }
 }
 
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
@@ -42,6 +260,6 @@
 @keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .skeleton { position: relative; overflow: hidden; border-radius: var(--radius-md); background-color: var(--color-muted); }
 .skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, var(--color-neutral-100), transparent); animation: shimmer 1.6s linear infinite; }
-.dark .skeleton::after { background: linear-gradient(90deg, transparent, var(--color-neutral-800), transparent); }
+@media (prefers-color-scheme: dark) { .skeleton::after { background: linear-gradient(90deg, transparent, rgba(233, 235, 242, 0.07), transparent); } }
 .animate-toast-in { animation: toast-in 0.2s var(--ease-standard) both; } .animate-overlay-in { animation: overlay-in 0.2s var(--ease-standard) both; } .animate-modal-in { animation: modal-in 0.25s var(--ease-standard) both; }
 @media (prefers-reduced-motion: reduce) { .skeleton::after, .animate-toast-in, .animate-overlay-in, .animate-modal-in { animation: none; } }

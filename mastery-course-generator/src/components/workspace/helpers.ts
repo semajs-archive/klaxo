@@ -69,17 +69,17 @@ export function masteryLabel(state: MasteryState): string {
 export function recommendationLabel(action: RecommendationAction): string {
   switch (action) {
     case 'remediate':
-      return 'Review & remediate misconceptions';
+      return 'Go back over this one';
     case 'more_practice':
-      return 'Continue practicing';
+      return 'Keep practising this';
     case 'advance':
-      return 'Advance to new material';
+      return 'Move on to something new';
     case 'challenge':
-      return 'Take on a challenge';
+      return 'Try a harder one';
     case 'cumulative_review':
-      return 'Schedule cumulative review';
+      return 'Come back to this later';
     case 'introduce':
-      return 'Introduce this objective';
+      return 'Start on this one';
     default:
       return action;
   }
@@ -124,9 +124,25 @@ export function relativeDays(ts: number | null | undefined): string {
   return `Due in ${days} days`;
 }
 
-/** Humanize a question kind (snake_case → spaced title). */
+/** Humanize a question kind. "mcq" is not a word anyone outside the code uses. */
+const KIND_LABELS: Record<string, string> = {
+  mcq: 'Multiple choice',
+  short_answer: 'Short answer',
+  numeric: 'Number',
+  code: 'Code',
+};
+
 export function humanizeKind(kind: string): string {
-  return kind
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return (
+    KIND_LABELS[kind] ??
+    kind.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
+/**
+ * Strip a leading "Unit N:" prefix from a unit title so callers can prepend
+ * their own numbering without doubling it ("Unit 1: Unit 1: Foundations").
+ */
+export function unitDisplayTitle(title: string): string {
+  return title.replace(/^unit\s*\d+\s*[:.\-–]\s*/i, '');
 }
