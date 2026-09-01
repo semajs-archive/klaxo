@@ -13,7 +13,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { getAiContext } from '../ai';
-import { generateStructured, resolveModel } from '../ai/router';
+import { generateStructured } from '../ai/router';
 import { SourceAnalysis, SourceAnalysisSchema } from '../ai/types';
 import { delimitSource, SOURCE_EXTRACTION_SYSTEM } from '../pipeline/prompts';
 import {
@@ -258,8 +258,13 @@ export async function analyzeSources(input: AnalyzeSourcesInput): Promise<Source
   // 3. Assemble a combined source payload for the model. Include a per-fragment
   //    reference id so the model can cite sources in its interpretation.
   // For vision model: include image data for image fragments
-  const hasImages = allFragments.some(f => f.kind === 'image' && f.imageData);
-  const model = resolveModel(routing, 'source_extraction');
+  const hasImages = allFragments.some((f) => f.kind === 'image' && f.imageData);
+
+  // Only reach for the vision model when there is actually something to look
+  // at. Sending typed notes or an extracted PDF to a vision model costs more,
+  // is slower, and — on providers that gate vision models behind a separate
+  // licence — fails outright on material that never needed one.
+  const model = hasImages ? routing.vision : routing.planning;
   
   // Build messages with image support
   const messages: Message[] = [

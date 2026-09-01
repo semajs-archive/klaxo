@@ -1,15 +1,21 @@
 /**
- * Connect an AI provider, interactively.
+ * Connect an AI provider.
  *
- * Run with `npm run ai:setup`.
+ *   npm run ai:setup                          — prompts, hiding the token
+ *   KLAXO_AI_TOKEN=... npm run ai:setup       — no prompt at all
  *
- * Two reasons this exists rather than "edit .env yourself":
+ * Why this exists rather than "edit .env yourself": it REPLACES the keys
+ * instead of appending them. Appending leaves two copies of
+ * `FCC_SERVER_BASE_URL` in the file, and which one wins is a detail of the
+ * loader nobody should have to know.
  *
- * 1. The token is read without echoing and written straight to `.env`. It is
- *    never printed, never pasted into a chat, never in shell history.
- * 2. It REPLACES the keys rather than appending them. Appending leaves two
- *    copies of `FCC_SERVER_BASE_URL` in the file, and which one wins is a
- *    detail of the loader nobody should have to know.
+ * On hiding the token: the prompt turns off echo, but that only works in a
+ * real terminal. Inside a wrapper that replays or logs your input — an IDE
+ * console, a remote shell, an agent session — the characters can still be
+ * captured no matter what this script does. So it refuses to prompt unless it
+ * is attached to a genuine TTY, and points at the environment-variable form
+ * instead. A token that gets echoed into a log has to be rotated, and that is
+ * a worse afternoon than reading one extra line of instructions.
  */
 import { readFileSync, writeFileSync, existsSync, copyFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
@@ -132,7 +138,30 @@ async function main() {
     }
   }
 
-  const token = await askSecret(`${provider.tokenHint}: `);
+  const fromEnv = process.env.KLAXO_AI_TOKEN?.trim();
+  let token = fromEnv ?? '';
+
+  if (!token) {
+    if (!process.stdin.isTTY) {
+      console.error(
+        [
+          '',
+          'This is not a real terminal, so the token cannot be hidden as you type.',
+          'Some wrappers echo or log input regardless of what this script asks for.',
+          '',
+          'Pass it as an environment variable instead:',
+          '',
+          '  KLAXO_AI_TOKEN="your-token" npm run ai:setup',
+          '',
+          'Or open a normal terminal and run npm run ai:setup there.',
+        ].join('\n'),
+      );
+      process.exit(1);
+    }
+
+    token = await askSecret(`${provider.tokenHint}: `);
+  }
+
   if (!token) {
     console.error('No token given; nothing changed.');
     process.exit(1);
@@ -147,6 +176,9 @@ async function main() {
   writeFileSync(envPath, contents, { mode: 0o600 });
 
   console.log('\nWritten to .env (not committed — it is git-ignored).');
+  if (fromEnv) {
+    console.log('Tip: prefix the command with a space so it stays out of shell history.');
+  }
   console.log('Check it works:  npm run nim:probe');
   console.log('Then restart the dev server so it picks up the change.');
   rl.close();
